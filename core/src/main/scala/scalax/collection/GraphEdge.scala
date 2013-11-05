@@ -190,8 +190,7 @@ object GraphEdge {
         (this eq that) ||
         (that canEqual this) &&
         (that.undirected == this.undirected) &&
-        (this.nodes == that.nodes ||
-         that.nodes == this.nodes || // TODO for Scala 2.9.x only
+        (that.nodes == this.nodes || // Scala 2.9.x only
          undirected && nodesEqual(that))
       case _ => false
     }
