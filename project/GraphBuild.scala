@@ -77,7 +77,6 @@ object GraphBuild extends Build {
     // prevents sbteclipse from including java source directories
     unmanagedSourceDirectories in Compile <<= (scalaSource in Compile)(Seq(_)),
     unmanagedSourceDirectories in Test    <<= (scalaSource in Test)   (Seq(_)),
-    scalacOptions in (Compile, doc) += "-diagrams",
 //    scalacOptions in doc ++= Seq(
 //      "-doc-root-content", "src/main/scala/rootdoc.txt"
 //    ),
