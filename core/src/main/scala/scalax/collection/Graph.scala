@@ -6,7 +6,7 @@ import collection.generic.GenericCompanion
 import collection.mutable.{Set => MSet}
 import scala.reflect.runtime.universe._
 
-import GraphPredef.{EdgeLikeIn, Param, InParam, OutParam,
+import GraphPredef.{EdgeLikeIn, Param, InParam, OutParam, OuterElem,
                     OuterNode, InnerNodeParam, OuterEdge, InnerEdgeParam}
 import GraphEdge.{EdgeLike, EdgeCompanionBase, DiHyperEdgeLike, UnDiEdge, DiEdge, EdgeCopy}
 import generic.{GraphCompanion, GraphCoreCompanion}
@@ -30,9 +30,9 @@ import io._
  * @author Peter Empen
  */
 trait GraphLike[N,
-                E[X]  <: EdgeLikeIn[X],
-                +This[X, Y[X]<:EdgeLikeIn[X]]
-                      <: GraphLike[X,Y,This] with Set[Param[X,Y]] with Graph[X,Y]]
+                E[X] <: EdgeLikeIn[X],
+               +This[X, Y[X] <: EdgeLikeIn[X]] <:
+                 GraphLike[X,Y,This] with Set[Param[X,Y]] with Graph[X,Y]]
   extends SetLike       [Param[N,E], This[N,E]]
   with    GraphTraversal[N,E]
   with    GraphBase     [N,E]
@@ -70,35 +70,32 @@ trait GraphLike[N,
    * @param ordNode the node ordering defaulting to `defaultNodeOrdering`.
    * @param ordEdge the edge ordering defaulting to `defaultEdgeOrdering`.
    */
-  def asSortedString (nodeSeparator       : String  = GraphBase.defaultSeparator,
-                      edgeSeparator       : String  = GraphBase.defaultSeparator,
-                      nodesEdgesSeparator : String  = GraphBase.defaultSeparator,
-                      withNodesEdgesPrefix: Boolean = false)(
-                      implicit ordNode    : NodeOrdering = defaultNodeOrdering,
-                               ordEdge    : EdgeOrdering = defaultEdgeOrdering) =
-  { val ns = if (withNodesEdgesPrefix) nodes.toSortedString(nodeSeparator)(ordNode)
+  def asSortedString(nodeSeparator       : String  = GraphBase.defaultSeparator,
+                     edgeSeparator       : String  = GraphBase.defaultSeparator,
+                     nodesEdgesSeparator : String  = GraphBase.defaultSeparator,
+                     withNodesEdgesPrefix: Boolean = false)(
+                     implicit ordNode    : NodeOrdering = defaultNodeOrdering,
+                              ordEdge    : EdgeOrdering = defaultEdgeOrdering) = {
+    val ns = if (withNodesEdgesPrefix) nodes.toSortedString(nodeSeparator)(ordNode)
              else                      nodes.asSortedString(nodeSeparator)(ordNode)
     val es = if (withNodesEdgesPrefix) edges.toSortedString(edgeSeparator)(ordEdge)
              else                      edges.asSortedString(edgeSeparator)(ordEdge)
-    ns + (if (ns.length > 0 && es.length > 0) nodesEdgesSeparator
-          else                                "") +
-    es
+    ns + (if (ns.length > 0 && es.length > 0) nodesEdgesSeparator else "") + es
   }
   /** Same as `asSortedString` but additionally prefixed and parenthesized by `stringPrefix`.  
    */
-  def toSortedString (nodeSeparator       : String  = GraphBase.defaultSeparator,
-                      edgeSeparator       : String  = GraphBase.defaultSeparator,
-                      nodesEdgesSeparator : String  = GraphBase.defaultSeparator,
-                      withNodesEdgesPrefix: Boolean = false)(
-                      implicit ordNode    : NodeOrdering = defaultNodeOrdering,
-                               ordEdge    : EdgeOrdering = defaultEdgeOrdering) =
-  { stringPrefix +
+  def toSortedString(nodeSeparator       : String  = GraphBase.defaultSeparator,
+                     edgeSeparator       : String  = GraphBase.defaultSeparator,
+                     nodesEdgesSeparator : String  = GraphBase.defaultSeparator,
+                     withNodesEdgesPrefix: Boolean = false)(
+                     implicit ordNode    : NodeOrdering = defaultNodeOrdering,
+                              ordEdge    : EdgeOrdering = defaultEdgeOrdering) =
+    stringPrefix +
     "(" + asSortedString(nodeSeparator,
                          edgeSeparator,
                          nodesEdgesSeparator,
                          withNodesEdgesPrefix)(ordNode, ordEdge) +
     ")"
-  }
   /**
    * `Graph` instances are equal if their nodes and edges turned
    * to outer nodes and outer edges are equal. Any `TraversableOnce`
@@ -109,29 +106,31 @@ trait GraphLike[N,
    * Graph(1~2, 3) == List(1~2, 3)
    * Graph(1~2, 3) == List(1, 2, 2, 3, 2~1)
    * }}}
-   * The first test is `false` because of the failing nodes `1` and `2`.
+   * The first test is `false` because of the missing nodes `1` and `2`.
    * The second is true because of duplicate elimination and undirected edge equivalence.   
    */
   override def equals(that: Any): Boolean = that match {
-    case that: Graph[N,E] =>
+    case that: Graph[N,E] => {
       (this eq that) ||
       (this.order     == that.order    ) &&
       (this.graphSize == that.graphSize) &&
       { val thatNodes = that.nodes.toOuter 
         try this.nodes forall (thisN => thatNodes(thisN.value))
-        catch { case _: ClassCastException => false }          } &&
+        catch { case _: ClassCastException => false } } &&
       { val thatEdges = that.edges.toOuter 
         try this.edges forall (thisE => thatEdges(thisE.toOuter))
-        catch { case _: ClassCastException => false }          }
-    case that: TraversableOnce[_] =>
+        catch { case _: ClassCastException => false } }
+    }
+    case that: TraversableOnce[_] => {
       val thatSet = that.toSet
       (this.size == thatSet.size) &&
       { val thatNodes = thatSet.asInstanceOf[Set[N]]
         try this.nodes forall (thisN => thatNodes(thisN.value))
-        catch { case _: ClassCastException => false }          } &&
+        catch { case _: ClassCastException => false } } &&
       { val thatEdges = thatSet.asInstanceOf[Set[E[N]]]
         try this.edges forall (thisE => thatEdges(thisE.toOuter))
-        catch { case _: ClassCastException => false }          }
+        catch { case _: ClassCastException => false } }
+    }
     case _ =>
       false
   }
@@ -139,7 +138,7 @@ trait GraphLike[N,
   trait InnerNode extends super.InnerNode with TraverserInnerNode {
     this: NodeT =>
     /** The `Graph` instance `this` node is contained in. */
-    final def containingGraph: ThisGraph = selfGraph.asInstanceOf[ThisGraph]
+    final def containingGraph: ThisGraph = selfGraph //.asInstanceOf[ThisGraph]
   }
   protected abstract class NodeBase(override val value: N)
       extends super.NodeBase
@@ -153,7 +152,7 @@ trait GraphLike[N,
   type NodeSetT <: NodeSet
   trait NodeSet extends super.NodeSet {
     protected def copy: NodeSetT
-    override final def -(node: NodeT): NodeSetT =
+    override final def - (node: NodeT): NodeSetT =
       if (this contains node) { val c = copy; c minus node; c }
       else this.asInstanceOf[NodeSetT]
     /**
@@ -195,18 +194,16 @@ trait GraphLike[N,
    *  @return true if `elem` is contained in this graph
    */
   def contains(elem: Param[N,E]) = elem match {
-    case in: InParam[N,E] => in match {
+    case outer: OuterElem[N,E] => outer match {
       case n: OuterNode[N]   => nodes contains newNode(n.value)
-      case e: OuterEdge[N,E] => edges contains newEdge(e.edge)
-    } 
-    case out: OutParam[_,_] => out match {
+      case e: OuterEdge[N,E] => edges contains newEdge(edgeToEdgeCont(e.edge))
+    }
+    case inner: OutParam[_,_] => inner match { // OutParam should be called InnerElem
       case n: InnerNodeParam[N] => nodes contains (
-          n.toNodeT[N,E,ThisGraph](selfGraph)(anyNode => newNode(anyNode.value))
-        )
+        n.toNodeT[N,E,ThisGraph](selfGraph)(anyNode => newNode(anyNode.value)))
       case e: InnerEdgeParam[N,E,_,E]  => edges contains (
-          e.toEdgeT[N,E,ThisGraph](selfGraph)(anyEdge => newEdge(anyEdge.toOuter))
-        ) 
-    } 
+        e.toEdgeT[N,E,ThisGraph](selfGraph)(anyEdge => newEdge(edgeToEdgeCont(anyEdge.toOuter))))
+    }
   }
   /** Iterates over all nodes and all edges.
    *
@@ -270,7 +267,7 @@ trait GraphLike[N,
    *  @return the new supergraph containing all nodes and edges of this graph and `node`
    *  additionally.
    */
-  def +(node: N): This[N,E]
+  def + (node: N): This[N,E]
   /** Creates a new supergraph with an additional edge, unless the edge passed is
    *  already present.
    *
@@ -290,7 +287,7 @@ trait GraphLike[N,
    *  @return a new supergraph containing all nodes and edges of this graph
    *          plus `elem`.
    */
-  def +(elem: Param[N,E]): This[N,E] = elem match {
+  def + (elem: Param[N,E]): This[N,E] = elem match {
     case in: InParam[N,E] => in match {
       case n: OuterNode[N]   => this + n.value
       case e: OuterEdge[N,E] => this +# e.edge
@@ -304,7 +301,7 @@ trait GraphLike[N,
   override def ++ (elems: GenTraversableOnce[Param[N,E]]) = bulkOp(elems, true)
   override def -- (elems: GenTraversableOnce[Param[N,E]]) = bulkOp(elems, false)
   /** Prepares and calls `plusPlus` or `minusMinus`. */
-  final protected def bulkOp(elems:      GenTraversableOnce[Param[N,E]],
+  final protected def bulkOp(elems: GenTraversableOnce[Param[N,E]],
                              isPlusPlus: Boolean): This[N,E] = {
     val p = partition(elems)
     if (isPlusPlus) plusPlus  (p.toOuterNodes, p.toOuterEdges)
@@ -354,7 +351,7 @@ trait GraphLike[N,
    *  @return the new subgraph of this graph after the "gentle" deletion of `node`. 
    *          If `node` could not be deleted, the new graph is a copy of this graph. 
    */
-  def -?(node: N): This[N,E]
+  def -? (node: N): This[N,E]
   /** Creates a new subgraph consisting of all nodes and edges of this graph but `edge`.
    * The node set remains unchanged.
    *
@@ -397,7 +394,7 @@ trait GraphLike[N,
    *  @return a new subgraph of this graph after the "ripple" deletion of the passed
    *          node or edge.
    */
-  def -!(elem: Param[N,E]): This[N,E] = elem match {
+  def -! (elem: Param[N,E]): This[N,E] = elem match {
     case in: InParam[N,E] => in match {
       case n: OuterNode[N]   => this - n.value
       case e: OuterEdge[N,E] => this -!# e.edge

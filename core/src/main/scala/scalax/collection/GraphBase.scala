@@ -221,7 +221,7 @@ trait GraphBase[N, E[X] <: EdgeLikeIn[X]]
     def incomingFrom(from: NodeT): Set[EdgeT]
 
     /** Synonym for `incomingFrom`. */
-    @inline final def <~(from: NodeT) = incomingFrom(from)
+    @inline final def <~ (from: NodeT) = incomingFrom(from)
 
     /**
      * An edge at `from` having this node as a successor.
@@ -235,7 +235,7 @@ trait GraphBase[N, E[X] <: EdgeLikeIn[X]]
     def findIncomingFrom(from: NodeT): Option[EdgeT]
 
     /** Synonym for `findIncomingFrom`. */
-    @inline final def <~?(from: NodeT) = findIncomingFrom(from)
+    @inline final def <~? (from: NodeT) = findIncomingFrom(from)
 
     /**
      * The degree of this node.
@@ -277,21 +277,28 @@ trait GraphBase[N, E[X] <: EdgeLikeIn[X]]
     override def equals(other: Any) = other match {
       case that: GraphBase[N,E]#InnerNode => 
         (this eq that) || (that canEqual this) && (this.value == that.value)
-      case thatN: N => 
-        thatN match { case thatR: AnyRef => val thisN = this.value.asInstanceOf[AnyRef]  
-                                           (thisN eq thatR) || (thisN == thatR)
-                      case thatV => this.value == thatV }
+      case thatN: N => this.value == thatN
+        // thatN match { case thatR: AnyRef => { val thisN = this.value.asInstanceOf[AnyRef]
+        //                                       (thisN eq thatR) || (thisN == thatR) }
+        //               case thatV => this.value == thatV }
+        // thatN match {
+        //   case thatR: AnyRef => this.value match {
+        //     case thisR: AnyRef => thisR eq thatR
+        //     case thisV => thisV == thatR
+        //   }
+        //   case thatV => this.value == thatV
+        // }
       case _ => false
     }
     override def hashCode = value.##
   }
-  object InnerNode {
-    def unapply(node: InnerNode): Option[NodeT] =
-      if (node isContaining selfGraph) Some(node.asInstanceOf[NodeT])
-      else None
-  }
+  // object InnerNode {
+  //   def unapply(node: InnerNode): Option[NodeT] =
+  //     if (node isContaining selfGraph) Some(node.asInstanceOf[NodeT])
+  //     else None
+  // }
   object Node {
-    def apply  (node: N) = newNode(node)
+    def apply(node: N) = newNode(node)
     def unapply(n: NodeT) = Some(n)
 
     @inline final protected[collection]
@@ -415,9 +422,9 @@ trait GraphBase[N, E[X] <: EdgeLikeIn[X]]
   def nodes: NodeSetT
 
   type EdgeT <: InnerEdgeParam[N,E,NodeT,E] with InnerEdge with Serializable
-  object EdgeT {
-    def unapply(e: EdgeT): Option[(NodeT, NodeT)] = Some((e.edge._1, e.edge._2))
-  }
+  // object EdgeT {
+  //   def unapply(e: EdgeT): Option[(NodeT, NodeT)] = Some((e.edge._1, e.edge._2))
+  // }
   trait Edge extends Serializable
   trait InnerEdge
       extends /*Iterable[NodeT] with*/ InnerEdgeParam[N,E,NodeT,E] with Edge with InnerElem {
@@ -488,11 +495,11 @@ trait GraphBase[N, E[X] <: EdgeLikeIn[X]]
     // }
     @deprecated("Use toOuter instead", "1.8.0") def toEdgeIn = toOuter
   }
-  object InnerEdge {
-    def unapply(edge: InnerEdge): Option[EdgeT] =
-      if (edge.edge._1 isContaining selfGraph) Some(edge.asInstanceOf[EdgeT])
-      else None
-  }
+  // object InnerEdge {
+  //   def unapply(edge: InnerEdge): Option[EdgeT] =
+  //     if (edge.edge._1 isContaining selfGraph) Some(edge.asInstanceOf[EdgeT])
+  //     else None
+  // }
   object Edge {
     def apply(innerEdge: E[NodeT] with EdgeCopy[E]) = newEdge(innerEdge)
     def unapply(e: EdgeT) = Some(e)
@@ -622,9 +629,10 @@ trait GraphBase[N, E[X] <: EdgeLikeIn[X]]
         case _ => throw new IllegalArgumentException
       } 
       other match {
-        case e: OuterEdge[N,E]      => find(e.edge)
+        case e: OuterEdge[N,E] => find(e.edge)
         case e: InnerEdgeParam[N,E,_,E] => find(e.asEdgeT[N,E,selfGraph.type](selfGraph).toOuter)
-        case _                   => null.asInstanceOf[EdgeT]
+        // RHZ: I think I prefer a MatchException than an NPE
+        // case _ => null //.asInstanceOf[EdgeT]
       }
     }
   }

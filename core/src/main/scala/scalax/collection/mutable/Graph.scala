@@ -38,7 +38,7 @@ abstract class BuilderImpl[N,
 
   protected def add(elem: Param[N,E]) {
     elem match {
-      case n: OuterNode [N]     => nodes += n.value
+      case n: OuterNode[N]      => nodes += n.value
       case n: InnerNodeParam[N] => nodes += n.value
       case e: OuterEdge[N,E]          => edges += e.edge
       case e: InnerEdgeParam[N,E,_,E] => edges += e.asEdgeTProjection[N,E].toOuter
@@ -90,39 +90,38 @@ object GraphBuilder {
 trait GraphLike[N,
                 E[X] <: EdgeLikeIn[X],
                +This[X, Y[X]<:EdgeLikeIn[X]] <: GraphLike[X,Y,This] with Graph[X,Y]]
-	extends	CommonGraphLike[N, E, This]
-	with	  Growable  [Param[N,E]]
-	with	  Shrinkable[Param[N,E]] 
-	with	  Cloneable [Graph[N,E]]
-  with    EdgeOps   [N,E,This]
-  with    Mutable
+    extends CommonGraphLike[N, E, This]
+       with Growable  [Param[N,E]]
+       with Shrinkable[Param[N,E]]
+       with Cloneable [Graph[N,E]]
+       with EdgeOps   [N,E,This]
+       with Mutable
 { this: This[N,E] =>
-	override def clone: This[N,E] =
+  override def clone: This[N,E] =
     graphCompanion.from[N,E](nodes.toOuter, edges.toOuter)
-	type NodeT <: InnerNode 
+  type NodeT <: InnerNode
   trait InnerNode extends super.InnerNode with InnerNodeOps {
     this: NodeT =>
   }
   type NodeSetT <: NodeSet
-	trait NodeSet extends MutableSet[NodeT] with super.NodeSet
-	{
-		@inline final override def -= (node: NodeT): this.type = { remove(node); this }
+  trait NodeSet extends MutableSet[NodeT] with super.NodeSet {
+    @inline final override def -= (node: NodeT): this.type = { remove(node); this }
     @inline final def -?=         (node: NodeT): this.type = { removeGently(node); this }
     @inline final def -?          (node: NodeT)            = {
       val c = copy
       c subtract (node, false, minus, (NodeT) => {})
       c
     }
-		override def remove(node: NodeT) = subtract(node, true,  minus, minusEdges)
+    override def remove(node: NodeT) = subtract(node, true,  minus, minusEdges)
     def removeGently   (node: NodeT) = subtract(node, false, minus, minusEdges)
     /**
      * removes all incident edges of `node` from the edge set leaving the node set unchanged.
      * @param node the node the incident edges of which are to be removed from the edge set.
      */
     protected def minusEdges(node: NodeT): Unit
-	}
+  }
   type EdgeSetT <: EdgeSet
-	trait EdgeSet extends MutableSet[EdgeT] with super.EdgeSet {
+  trait EdgeSet extends MutableSet[EdgeT] with super.EdgeSet {
     @inline final def += (edge: EdgeT): this.type = { add(edge); this }
     /**
      * Same as `upsert` at graph level.
@@ -132,7 +131,7 @@ trait GraphLike[N,
     def removeWithNodes(edge: EdgeT): Boolean
   }
 
-	override def ++=(xs: TraversableOnce[Param[N,E]]): this.type = { xs foreach += ; this } 
+  override def ++= (xs: TraversableOnce[Param[N,E]]): this.type = { xs foreach += ; this }
 	
   /** Adds a node to this graph.
    *
@@ -213,18 +212,18 @@ trait GraphLike[N,
    * @param coll Collection of nodes and/or edges to intersect with;
    * @return this graph shrinked by the nodes and edges not contained in `coll`.
    */
-  def &=(coll: Iterable[Param[N,E]]): This[N,E] = {
+  def &= (coll: Iterable[Param[N,E]]): This[N,E] = {
     val collSet = coll.toSet
     foreach { _ match {
-      case n: OuterNode [N] => if(! collSet.contains(n)) this -= n 
+      case n: OuterNode[N]      => if(! collSet.contains(n)) this -= n
       case n: InnerNodeParam[N] => if(! collSet.contains(n.value)) this -= n.value
-      case e: OuterEdge[N,E]      => if(! collSet.contains(e)) this -= e
-      case e: InnerEdgeParam[N,E,_,E] =>
-        val outer: InParam[N,E] = e.asEdgeTProjection[N,E].toOuter.
-                                       asInstanceOf[OuterEdge[N,E]] // TODO
-        if(! collSet.contains(outer)) this -= outer 
+      case e: OuterEdge[N,E]    => if(! collSet.contains(e)) this -= e
+      case e: InnerEdgeParam[N,E,_,E] => if(! collSet.contains(e)) this -= e
+      //   val outer: InParam[N,E] = e.asEdgeTProjection[N,E].toOuter //.asInstanceOf[OuterEdge[N,E]] // TODO
+      //   if(! collSet.contains(outer)) this -= outer
+      // }
     }}
-    this.asInstanceOf[This[N,E]]
+    this //.asInstanceOf[This[N,E]]
   }
   /**
    * Removes all elements of `coll` from this graph. Edges will be
@@ -235,8 +234,8 @@ trait GraphLike[N,
    * @return this graph shrinked by the nodes and edges contained in `coll`.
    */
   @inline final
-  def --!=(coll: Iterable[Param[N,E]]): This[N,E] =
-    (this.asInstanceOf[This[N,E]] /: coll)(_ -!= _) 
+  def --!= (coll: Iterable[Param[N,E]]): This[N,E] =
+    (this /*.asInstanceOf[This[N,E]]*/ /: coll)(_ -!= _)
 }
 /**
  * The main trait for mutable graphs bundling the functionality of traits concerned with
@@ -249,9 +248,9 @@ trait GraphLike[N,
  */
 trait Graph[N, E[X] <: EdgeLikeIn[X]]
 	extends	CommonGraph[N,E]
-	with	  GraphLike[N, E, Graph]
+	with	  GraphLike[N,E,Graph]
 {
-	override def empty: Graph[N,E] = Graph.empty[N,E]
+  override def empty: Graph[N,E] = Graph.empty[N,E]
 }
 /**
  * The main companion object for mutable graphs.
@@ -306,17 +305,17 @@ class DefaultGraphImpl[N, E[X] <: EdgeLikeIn[X]]
   protected final def alteredClone
       (delNodes: Iterable[NodeT],
        delEdges: Iterable[EdgeT],
-       ripple:   Boolean,
+       ripple  : Boolean,
        addNodes: Iterable[N],
        addEdges: Iterable[E[N]]) = {
     new DefaultGraphImpl(this)(
-        delNodes.asInstanceOf[Iterable[AdjacencyListBase[N,E,DefaultGraphImpl]#NodeT]],
-        delEdges.asInstanceOf[Iterable[AdjacencyListBase[N,E,DefaultGraphImpl]#EdgeT]],
+        delNodes, //.asInstanceOf[Iterable[AdjacencyListBase[N,E,DefaultGraphImpl]#NodeT]],
+        delEdges, //.asInstanceOf[Iterable[AdjacencyListBase[N,E,DefaultGraphImpl]#EdgeT]],
         ripple, addNodes, addEdges)
   }
   override protected[this] def newBuilder = GraphBuilder[N,E,DefaultGraphImpl](DefaultGraphImpl)
   @inline final override def empty: DefaultGraphImpl[N,E] = DefaultGraphImpl.empty[N,E]
-  @inline final override def clone(): this.type = super.clone.asInstanceOf[this.type]
+  @inline final override def clone = super.clone //.asInstanceOf[this.type]
 
   @SerialVersionUID(7370L)
   final protected class NodeBase(value: N, hints: ArraySet.Hints)

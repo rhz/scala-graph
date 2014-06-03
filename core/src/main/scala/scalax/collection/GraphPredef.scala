@@ -31,7 +31,7 @@ object GraphPredef {
   /** This algebraic type includes outer and inner nodes and edges. As such it serves as the
    *  type parameter to `SetLike` extending `Graph`. 
    */  
-  sealed trait Param [N, +E[X<:N] <: EdgeLike[X]] {
+  sealed trait Param[N, +E[X<:N] <: EdgeLike[X]] {
     def isDefined = true
     def isNode: Boolean
     def isEdge: Boolean
@@ -54,17 +54,17 @@ object GraphPredef {
         case e: InnerEdgeParam[N,E,_,E] => e.asEdgeTProjection[N,E].toOuter
       }}
 
-      def toInParams: Iterable[InParam[N,E]] = elems map {_ match {
+      def toInParams: Iterable[InParam[N,E]] = elems map { _ match {
         case in: InParam[N,E] => in
         case n: InnerNodeParam[N] => OuterNode(n.value)
         case e: InnerEdgeParam[N,E,_,E] => e.asEdgeTProjection[N,E].toOuter.asInstanceOf[OuterEdge[N,E]]
       }}
     }
   }
-  implicit def graphParamsToPartition[N, E[X]<:EdgeLikeIn[X]]
-              (elems: Iterable[Param[N,E]]) = new Param.Partitions[N,E](elems)
+  implicit def graphParamsToPartition[N, E[X] <: EdgeLikeIn[X]]
+    (elems: Iterable[Param[N,E]]) = new Param.Partitions[N,E](elems)
               
-  implicit def nodeSetToOuter[N, E[X]<:EdgeLikeIn[X]](nodes: Graph[N,E]#NodeSetT)
+  implicit def nodeSetToOuter[N, E[X] <: EdgeLikeIn[X]](nodes: Graph[N,E]#NodeSetT)
       : Iterable[N] =
     new Abstract.Iterable[N] {
       def iterator = new Abstract.Iterator[N] {
@@ -74,10 +74,10 @@ object GraphPredef {
       }
     }
   
-  implicit def nodeSetToSeq[N, E[X]<:EdgeLikeIn[X]](nodes: Graph[N,E]#NodeSetT)
+  implicit def nodeSetToSeq[N, E[X] <: EdgeLikeIn[X]](nodes: Graph[N,E]#NodeSetT)
       : Seq[OutParam[N,E]] = new SeqFacade(nodes)
   
-  implicit def edgeSetToOuter[N, E[X]<:EdgeLikeIn[X]](edges: Graph[N,E]#EdgeSetT)
+  implicit def edgeSetToOuter[N, E[X] <: EdgeLikeIn[X]](edges: Graph[N,E]#EdgeSetT)
       : Iterable[E[N]] =
     new Abstract.Iterable[E[N]] {
       def iterator = new Abstract.Iterator[E[N]] {
@@ -87,7 +87,7 @@ object GraphPredef {
       }
     }
   
-  implicit def edgeSetToSeq[N, E[X]<:EdgeLikeIn[X]](edges: Graph[N,E]#EdgeSetT)
+  implicit def edgeSetToSeq[N, E[X] <: EdgeLikeIn[X]](edges: Graph[N,E]#EdgeSetT)
       : Seq[OutParam[N,E]] = new SeqFacade(edges)
 
   /** @tparam N  the type of the nodes (vertices) this graph is passed to by the user.
@@ -100,7 +100,7 @@ object GraphPredef {
   /** Same as `InParam`. */
   type OuterElem[N, +E[X<:N] <: EdgeLike[X]] = InParam[N,E]
 
-  sealed trait OutParam[NO, +EO[X<:NO] <: EdgeLike[X]] extends Param[NO,EO] {
+  sealed trait OutParam[N, +E[X<:N] <: EdgeLike[X]] extends Param[N,E] {
     def isIn  = false
     def isOut = true
   }
@@ -132,11 +132,11 @@ object GraphPredef {
     def isContaining[N, E[X] <: EdgeLikeIn[X]](g: GraphBase[N,E]): Boolean
 
     protected[collection] final
-    def asNodeT[N <: NI, E[X]<:EdgeLikeIn[X], G <: GraphBase[N,E] with Singleton]
+    def asNodeT[N <: NI, E[X] <: EdgeLikeIn[X], G <: GraphBase[N,E] with Singleton]
         (g: G): g.NodeT = this.asInstanceOf[g.NodeT]
 
     protected[collection] final
-    def asNodeTProjection[N <: NI, E[X]<:EdgeLikeIn[X]]: GraphBase[N,E]#NodeT =
+    def asNodeTProjection[N <: NI, E[X] <: EdgeLikeIn[X]]: GraphBase[N,E]#NodeT =
       this.asInstanceOf[Graph[N,E]#NodeT]
 
     // RHZ: What's this method for? Why is it named `fold`?
@@ -185,23 +185,23 @@ object GraphPredef {
     extends InnerElem[NI,EI] with EdgeParam
   { 
     def edge: EO[NO]
-    final def isContaining[N <: NI, E[X]<:EdgeLikeIn[X]](g: GraphBase[N,E]): Boolean =
+    final def isContaining[N <: NI, E[X] <: EdgeLikeIn[X]](g: GraphBase[N,E]): Boolean =
       edge._1.isContaining[N,E](g)
 
     protected[collection] final
-    def asEdgeT[N <: NI, E[X]<:EdgeLikeIn[X], G <: GraphBase[N,E] with Singleton]
+    def asEdgeT[N <: NI, E[X] <: EdgeLikeIn[X], G <: GraphBase[N,E] with Singleton]
         (g: G) : g.EdgeT = this.asInstanceOf[g.EdgeT]
 
     protected[collection] final
-    def asEdgeTProjection[N <: NI, E[X]<:EdgeLikeIn[X]]: GraphBase[N,E]#EdgeT =
+    def asEdgeTProjection[N <: NI, E[X] <: EdgeLikeIn[X]]: GraphBase[N,E]#EdgeT =
       this.asInstanceOf[Graph[N,E]#EdgeT]
 
-    final def fold[N <: NI, E[X]<:EdgeLikeIn[X], G <: GraphBase[N,E] with Singleton, T]
+    final def fold[N <: NI, E[X] <: EdgeLikeIn[X], G <: GraphBase[N,E] with Singleton, T]
         (g: G)(fa: g.EdgeT => T, fb: GraphBase[N,E]#EdgeT => T): T =
       if (isContaining[N,E](g)) fa(asEdgeT[N,E,G](g))
       else                      fb(asEdgeTProjection[N,E])
 
-    final def toEdgeT[N <: NI, E[X]<:EdgeLikeIn[X], G <: GraphBase[N,E] with Singleton]
+    final def toEdgeT[N <: NI, E[X] <: EdgeLikeIn[X], G <: GraphBase[N,E] with Singleton]
         (g: G)(f: GraphBase[N,E]#EdgeT => g.EdgeT): g.EdgeT =
       fold[N,E,G,g.EdgeT](g)(e => e, f)
       

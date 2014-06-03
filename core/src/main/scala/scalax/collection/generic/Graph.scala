@@ -82,7 +82,7 @@ trait GraphCompanion[+CC[N, E[X] <: EdgeLikeIn[X]] <: Graph[N,E] with GraphLike[
   def fill[N, E[X] <: EdgeLikeIn[X]] (nr: Int)(elem: => Param[N,E])
                                      (implicit edgeT: TypeTag[E[N]],
                                       config: Config): CC[N,E] = {
-    val gB = newBuilder[N,E].asInstanceOf[GraphBuilder[N,E,CC]]
+    val gB = newBuilder[N,E] //.asInstanceOf[GraphBuilder[N,E,CC]]
     gB.sizeHint(nr)
     var i = 0
     while (i < nr) {
@@ -92,13 +92,13 @@ trait GraphCompanion[+CC[N, E[X] <: EdgeLikeIn[X]] <: Graph[N,E] with GraphLike[
     gB.result
   }
   def newBuilder[N, E[X] <: EdgeLikeIn[X]](implicit edgeT: TypeTag[E[N]],
-                                           config: Config): Builder[Param[N,E], CC[N,E]] =
-    new GraphBuilder[N,E,CC](this)
+                                           config: Config) = //: Builder[Param[N,E], CC[N,E]] =
+    GraphBuilder(this)(edgeT, config)
   class GraphCanBuildFrom[N, E[X] <: EdgeLikeIn[X]](implicit edgeT: TypeTag[E[N]],
                                                     config: Config)
-    extends CanBuildFrom[Coll @uncheckedVariance, Param[N,E], CC[N,E] @uncheckedVariance]
+    extends CanBuildFrom[Graph[N,E], Param[N,E], CC[N,E]]
   {
-    def apply(from: Coll @uncheckedVariance) = newBuilder[N,E]
+    def apply(from: Graph[N,E]) = newBuilder[N,E]
     def apply() = newBuilder[N,E]
   }
 }
@@ -135,6 +135,6 @@ trait MutableGraphCompanion[+CC[N, E[X] <: EdgeLikeIn[X]] <:
 {
   override def newBuilder[N, E[X] <: EdgeLikeIn[X]]
               (implicit edgeT: TypeTag[E[N]],
-               config: Config): Builder[Param[N,E], CC[N,E] @uncheckedVariance] =
-    new GraphBuilder[N,E,CC](this)(edgeT, config)
+               config: Config) = // : Builder[Param[N,E], CC[N,E] @uncheckedVariance] =
+    GraphBuilder[N,E,CC](this)(edgeT, config)
 }

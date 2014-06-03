@@ -67,7 +67,7 @@ trait AdjacencyListGraph[N,
       nodes += edge
       this
     }
-    @inline final protected[immutable] def addEdge(edge: EdgeT) { +=(edge) }
+    @inline final protected[immutable] def addEdge(edge: EdgeT) { this += edge }
     @inline final def +(edge: EdgeT): Set[EdgeT] = toSet + edge
     @inline final def -(edge: EdgeT): Set[EdgeT] = toSet - edge
     @inline final override lazy val maxArity = super.maxArity

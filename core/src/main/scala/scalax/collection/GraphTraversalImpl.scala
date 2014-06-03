@@ -254,10 +254,10 @@ trait GraphTraversalImpl[N, E[X] <: EdgeLikeIn[X]]
       )
     }
 
-    final def shortestPathTo[T:Numeric, U](
+    final def shortestPathTo[T: Numeric, U](
         potentialSuccessor: NodeT,
-        weight            : EdgeT => T,
-        visitor           : A => U): Option[Path] = {
+        weight: EdgeT => T,
+        visitor: A => U): Option[Path] = {
       withHandle() { implicit visitedHandle => 
         val num = implicitly[Numeric[T]] 
         import num._
