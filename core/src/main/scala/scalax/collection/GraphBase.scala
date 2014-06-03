@@ -542,13 +542,12 @@ trait GraphBase[N, E[X] <: EdgeLikeIn[X]]
     // }
     @inline final implicit def innerEdgeToEdgeCont(edge: EdgeT): E[NodeT] = edge.edge
 
-    def defaultWeight(edge: EdgeT) = edge.weight
-    def weightOrdering[T: Numeric](weight: EdgeT => T): Ordering[EdgeT]  = {
+    // def defaultWeight(edge: EdgeT) = edge.weight
+    def weightOrdering[T: Numeric](weight: EdgeT => T): Ordering[EdgeT] =
       Ordering by weight
-    }
-    object WeightOrdering extends Ordering[EdgeT] {
-      def compare(e1: EdgeT, e2: EdgeT): Int = e1.weight compare e2.weight
-    }
+    // object WeightOrdering extends Ordering[EdgeT] {
+    //   def compare(e1: EdgeT, e2: EdgeT): Int = e1.weight compare e2.weight
+    // }
     object ArityOrdering extends Ordering[EdgeT] {
       def compare(e1: EdgeT, e2: EdgeT): Int = e1.arity compare e2.arity
     }
@@ -635,7 +634,7 @@ trait GraphBase[N, E[X] <: EdgeLikeIn[X]]
    * @return Set of all contained edges.
    */
   def edges: EdgeSetT
-  def totalWeight = (0L /: edges)(_ + _.weight)
+  // def totalWeight = (0L /: edges)(_ + _.weight)
 }
 object GraphBase {
   val defaultSeparator = ", "

@@ -351,7 +351,7 @@ trait GraphTraversalImpl[N, E[X] <: EdgeLikeIn[X]]
     
     final protected def apply[U](pred:    (NodeT) => Boolean = noNode,
                                  visitor: A => U             = empty): Option[NodeT] =
-      if (parameters.kind.isBsf) bfs(pred, visitor)
+      if (parameters.kind.isBfs) bfs(pred, visitor)
       else                       dfs(pred, visitor)
 
     final protected def bfs[U](pred:    (NodeT) => Boolean = noNode,
@@ -1029,4 +1029,4 @@ object GraphTraversalImpl {
         : Option[(DijkstraQueue[N,T], DijkstraCosts[N,T])] =
       Some(inf.queueIterator, inf.costsIterator)
   }
-} 
+}

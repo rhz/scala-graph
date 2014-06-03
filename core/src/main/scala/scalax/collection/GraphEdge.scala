@@ -120,41 +120,25 @@ object GraphEdge {
     def isLooping: Boolean
     /** Same as `! looping`. */                
     final def nonLooping = ! isLooping 
-    /**
-     * The weight of this edge defaulting to 1L.
-     * 
-     * Note that `weight` is normally not part of the edge key (hashCode) meaning that
-     * edges of different weights connecting the same nodes will be treated as equal
-     * and not added more than once. If you need multi-edges based on different weights 
-     * you should either make use of a predefined key-weighted edge type such as `WDiEdge` 
-     * or define a custom edge class that mixes in `ExtendedKey` and adds `weight` to
-     * `keyAttributes`. 
-     * 
-     * In case of weights of a type other than `Long` you either convert values of
-     * that type to `Long` prior to edge creation or define a custom edge class 
-     * to include your own `val` of that type and override `def weight` to provide
-     * a conversion.  
-     */
-    def weight: Long = 1
-    /**
-     * The label of this edge. If `Graph`'s edge type parameter has been inferred or set
-     * to a labeled edge type all contained edges are labeled. Otherwise you should
-     * assert, for instance by calling `isLabeled`, that the edge instance is labeled
-     * before calling this method.
-     * 
-     * Note that `label` is normally not part of the edge key (hashCode) meaning that
-     * edges of different labels connecting the same nodes will be treated as equal
-     * and not added more than once. If you need multi-edges based on different labels 
-     * you should either make use of a predefined key-labeled edge type such as `LDiEdge` 
-     * or define a custom edge class that mixes in `ExtendedKey` and adds `label` to
-     * `keyAttributes`. 
-     * 
-     * @throws UnsupportedOperationException if the edge is non-labeled.
-     */
-    def label: Any =
-      throw new UnsupportedOperationException("Call of label for a non-labeled edge.")
-    /** `true` if this edge is labeled. See also `label`. */
-    def isLabeled = this.isInstanceOf[LEdge[N]]
+    // /**
+    //  * The label of this edge. If `Graph`'s edge type parameter has been inferred or set
+    //  * to a labeled edge type all contained edges are labeled. Otherwise you should
+    //  * assert, for instance by calling `isLabeled`, that the edge instance is labeled
+    //  * before calling this method.
+    //  *
+    //  * Note that `label` is normally not part of the edge key (hashCode) meaning that
+    //  * edges of different labels connecting the same nodes will be treated as equal
+    //  * and not added more than once. If you need multi-edges based on different labels
+    //  * you should either make use of a predefined key-labeled edge type such as `LDiEdge`
+    //  * or define a custom edge class that mixes in `ExtendedKey` and adds `label` to
+    //  * `keyAttributes`.
+    //  *
+    //  * @throws UnsupportedOperationException if the edge is non-labeled.
+    //  */
+    // def label: Any =
+    //   throw new UnsupportedOperationException("Call of label for a non-labeled edge.")
+    // /** `true` if this edge is labeled. See also `label`. */
+    // def isLabeled = this.isInstanceOf[LEdge[N]]
 
     /** Same as `isAt`. */
     @inline final def contains[M>:N](node: M): Boolean = isAt(node)
