@@ -5,6 +5,7 @@ import language.higherKinds
 import collection.Set
 
 import GraphPredef.EdgeLikeIn
+import GraphEdge.EdgeCopy
 import immutable.AdjacencyListBase
 
 /** Implements an incident list based mutable graph representation.
@@ -108,21 +109,21 @@ trait AdjacencyListGraph[N,
   type EdgeT = EdgeImpl
   @inline final def newEdgeTArray(size: Int): Array[EdgeT] = new Array[EdgeT](size)
   @SerialVersionUID(7972L)
-  class EdgeImpl(override val edge: E[NodeT]) extends EdgeBase(edge)
+  class EdgeImpl(edge: E[NodeT] with EdgeCopy[E]) extends EdgeBase(edge)
   {
     def remove: Boolean = edges remove this
     def removeWithNodes(edge: E[N]) = if (edges remove this) {
                                         selfGraph.nodes --= privateNodes; true
                                       } else false
   }
-  @inline final override protected def newEdge(innerEdge: E[NodeT]) = new EdgeT(innerEdge)
+  @inline final override protected def newEdge(innerEdge: E[NodeT] with EdgeCopy[E]) = new EdgeT(innerEdge)
   type EdgeSetT = EdgeSet
   @SerialVersionUID(7974L)
   class EdgeSet extends super[GraphLike].EdgeSet with super.EdgeSet
   {
     protected[AdjacencyListGraph] var initialized = false
     
-    override protected[collection] def initialize(edges: Iterable[E[N]]) {
+    override protected[collection] def initialize(edges: Iterable[E[N] with EdgeCopy[E]]) {
       if (edges ne null)
         edges foreach (this add Edge(_))
       initialized = true
@@ -164,9 +165,9 @@ trait AdjacencyListGraph[N,
   }
   override val edges: EdgeSetT
 
-  @inline final def clear	{	nodes.clear }
+  @inline final def clear { nodes.clear }
   @inline final def add(node: N): Boolean = nodes add Node(node)
-  @inline final def add(edge: E[N]): Boolean  = edges add Edge(edge)
-  @inline final protected def +=# (edge: E[N]): this.type = { add(edge); this }
-  @inline final def upsert(edge: E[N]): Boolean = edges upsert Edge(edge)
+  @inline final def add(edge: E[N] with EdgeCopy[E]): Boolean  = edges add Edge(edge)
+  @inline final protected def +=# (edge: E[N] with EdgeCopy[E]): this.type = { add(edge); this }
+  @inline final def upsert(edge: E[N] with EdgeCopy[E]): Boolean = edges upsert Edge(edge)
 }

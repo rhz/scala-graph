@@ -13,21 +13,23 @@ import GraphPredef.{EdgeLikeIn, Param, InParam,
 import immutable.{AdjacencyListBase}
 import generic.{GraphCompanion, MutableGraphCompanion}
 import config._
-import GraphEdge.{EdgeCompanionBase, UnDiEdge}
+import GraphEdge.{EdgeCompanionBase, UnDiEdge, EdgeCopy}
 import io._
 
 protected[collection]
 abstract class BuilderImpl[N,
                            E[X] <: EdgeLikeIn[X],
-                           CC[N,E[X] <: EdgeLikeIn[X]] <: CommonGraph[N,E] with
-                                                          CommonGraphLike[N,E,CC]](
-    implicit edgeT: TypeTag[E[N]],
-    config: GraphConfig)
+                          +CC[N,E[X] <: EdgeLikeIn[X]] <: CommonGraph[N,E] with
+                                                          CommonGraphLike[N,E,CC]]
     extends Builder[Param[N,E], CC[N,E]] {
 
+  type Companion <: GraphCompanion[CC]
+  val companion: Companion
+  val edgeT: TypeTag[E[N]]
+  val config: companion.Config
   protected type This = CC[N,E]
-  protected val nodes = new ArrayBuffer[N]   (config.orderHint)
-  protected val edges = new ArrayBuffer[E[N]](
+  protected val nodes = new ArrayBuffer[N](config.orderHint)
+  protected val edges = new ArrayBuffer[E[N] with EdgeCopy[E]](
     config match {
       case CoreConfig(order, adjList) => order * max(adjList.initialCapacity, 16)
       case _ => config.orderHint * 32
@@ -59,17 +61,26 @@ abstract class BuilderImpl[N,
     edges.clear
   }
 }
-class GraphBuilder[N,
-                   E[X] <: EdgeLikeIn[X],
-                   CC[N,E[X] <: EdgeLikeIn[X]]
-                        <: CommonGraphLike[N,E,CC] with CommonGraph[N,E]]
-      (companion: GraphCompanion[CC])
-      (implicit edgeT: TypeTag[E[N]],
-       config: GraphConfig)
-  extends BuilderImpl[N,E,CC]
+abstract class GraphBuilder[N,
+                            E[X] <: EdgeLikeIn[X],
+                           +CC[N,E[X] <: EdgeLikeIn[X]]
+                             <: CommonGraphLike[N,E,CC] with CommonGraph[N,E]]
+    extends BuilderImpl[N,E,CC]
 {
-  def result: This =
-    companion.from(nodes, edges)(edgeT, config.asInstanceOf[companion.Config])
+  def result: This = companion.from[N,E](nodes, edges)(edgeT, config)
+}
+object GraphBuilder {
+  def apply[N,
+            E[X] <: EdgeLikeIn[X],
+            CC[N,E[X] <: EdgeLikeIn[X]]
+              <: CommonGraphLike[N,E,CC] with CommonGraph[N,E]]
+    (c: GraphCompanion[CC])(implicit e: TypeTag[E[N]], cfg: c.Config) =
+    new GraphBuilder[N,E,CC] {
+      type Companion = c.type
+      val companion: Companion = c
+      val edgeT = e
+      val config = cfg
+    }
 }
 /**
  * Trait with common mutable Graph methods.
@@ -136,24 +147,24 @@ trait GraphLike[N,
    * @return inner node containing the added node.
    */
   @inline final def addAndGet(node: N): NodeT = { add(node); find(node) get }
-	def +  (node: N) = if (nodes contains Node(node)) this.asInstanceOf[This[N,E]]
-	                   else clone += node
-	@inline final def += (node: N): this.type = { add(node); this }
-  def add(edge: E[N]): Boolean
+  def + (node: N) = if (nodes contains Node(node)) this //.asInstanceOf[This[N,E]]
+                    else clone += node
+  @inline final def += (node: N): this.type = { add(node); this }
+  def add(edge: E[N] with EdgeCopy[E]): Boolean
   /**
    * Adds the given edge if not yet present and returns it as an inner edge.
    * 
    * @param edge the edge to add.
    * @return the inner edge containing the added edge.
    */
-  @inline final def addAndGet(edge: E[N]): EdgeT = { add(edge); find(edge) get }
-	@inline final protected def +#  (edge: E[N]) = clone +=# edge
-	protected def +=#(edge: E[N]): this.type
-	def += (elem: Param[N,E]) =
+  @inline final def addAndGet(edge: E[N] with EdgeCopy[E]): EdgeT = { add(edge); find(edge) get }
+  @inline final protected def +#  (edge: E[N] with EdgeCopy[E]) = clone +=# edge
+                protected def +=# (edge: E[N] with EdgeCopy[E]): this.type
+  def += (elem: Param[N,E]) =
     elem match {
-      case n: OuterNode [N] => this += n.value	
+      case n: OuterNode[N]      => this += n.value
       case n: InnerNodeParam[N] => this += n.value
-      case e: OuterEdge[N,E]      => this +=# e.edge
+      case e: OuterEdge[N,E]    => this +=# e.edge
       case e: InnerEdgeParam[N,E,_,E] => this +=# e.asEdgeTProjection[N,E].toOuter
     }
   /**
@@ -164,36 +175,36 @@ trait GraphLike[N,
    * @param edge The edge to add to this graph.
    * @return `true` if `edge` has been inserted.
    */
-  def upsert(edge: E[N]): Boolean
+  def upsert(edge: E[N] with EdgeCopy[E]): Boolean
 
-	@inline final def     - (node: N) = clone -= node
+  @inline final def -   (node: N) = clone -= node
+  @inline final def -=  (node: N): this.type = { remove(node); this }
+  @inline final def -?= (node: N): this.type = { removeGently(node); this }
+  @inline final def -?  (node: N) = clone -?= node
   @inline final def remove(node: N) = nodes find node exists (nodes remove _)
-	@inline final def    -= (node: N): this.type = { remove(node); this }
-  @inline final def    -?=(node: N): this.type = { removeGently(node); this }
-  @inline final def    -? (node: N) = clone -?= node
-  final def   removeGently(node: N) = nodes find node exists (nodes removeGently _) 
+  final def removeGently(node: N) = nodes find node exists (nodes removeGently _)
 
-	@inline final           def -     (edge: E[N]) = clone -=# edge
-  @inline final           def remove(edge: E[N]) = edges remove Edge(edge)
-	@inline final protected def -=#   (edge: E[N]): this.type = { remove(edge); this }
-  @inline final protected def -!=#  (edge: E[N]): this.type = { removeWithNodes(edge); this }
-  @inline final           def -!    (edge: E[N]) = clone -!=# edge
-  @inline final protected def -#    (edge: E[N]) = clone  -=# edge
-  @inline final protected def -!#   (edge: E[N]) = clone -!=# edge
-  @inline final def removeWithNodes (edge: E[N]) = edges removeWithNodes Edge(edge)
+  @inline final def - (edge: E[N] with EdgeCopy[E]) = clone -=# edge
+  @inline final def remove(edge: E[N] with EdgeCopy[E]) = edges remove Edge(edge)
+  @inline final protected def -=#   (edge: E[N] with EdgeCopy[E]): this.type = { remove(edge); this }
+  @inline final protected def -!=#  (edge: E[N] with EdgeCopy[E]): this.type = { removeWithNodes(edge); this }
+  @inline final           def -!    (edge: E[N] with EdgeCopy[E]) = clone -!=# edge
+  @inline final protected def -#    (edge: E[N] with EdgeCopy[E]) = clone  -=# edge
+  @inline final protected def -!#   (edge: E[N] with EdgeCopy[E]) = clone -!=# edge
+  @inline final def removeWithNodes (edge: E[N] with EdgeCopy[E]) = edges removeWithNodes Edge(edge)
 
   def -= (elem: Param[N,E]): this.type =
     elem match {
-      case n: OuterNode [N] => this -= n.value 
+      case n: OuterNode[N]      => this -= n.value
       case n: InnerNodeParam[N] => this -= n.value
-      case e: OuterEdge[N,E]      => this -=# e.edge
+      case e: OuterEdge[N,E]    => this -=# e.edge
       case e: InnerEdgeParam[N,E,_,E] => this -=# e.asEdgeTProjection[N,E].toOuter
   	}
-  def -!=(elem: Param[N,E]): this.type =
+  def -!= (elem: Param[N,E]): this.type =
     elem match {
-      case n: OuterNode [N] => this  -= n.value 
+      case n: OuterNode[N]      => this  -= n.value
       case n: InnerNodeParam[N] => this  -= n.value
-      case e: OuterEdge[N,E]      => this -!=# e.edge
+      case e: OuterEdge[N,E]    => this -!=# e.edge
       case e: InnerEdgeParam[N,E,_,E] => this -!=# e.asEdgeTProjection[N,E].toOuter
     }
   /**
@@ -250,29 +261,27 @@ trait Graph[N, E[X] <: EdgeLikeIn[X]]
 object Graph
   extends MutableGraphCompanion[Graph]
 {
-	def empty[N, E[X] <: EdgeLikeIn[X]](implicit edgeT: TypeTag[E[N]],
+  def empty[N, E[X] <: EdgeLikeIn[X]](implicit edgeT: TypeTag[E[N]],
                                       config: Config = defaultConfig): Graph[N,E] =
-	  new DefaultGraphImpl[N,E]()(edgeT, config)
+    new DefaultGraphImpl[N,E]()(edgeT, config)
   override def from[N, E[X] <: EdgeLikeIn[X]](nodes: Iterable[N] = Seq.empty[N],
-                                              edges: Iterable[E[N]])
+                                              edges: Iterable[E[N] with EdgeCopy[E]])
                                              (implicit edgeT: TypeTag[E[N]],
                                               config: Config = defaultConfig): Graph[N,E] =
-    DefaultGraphImpl.from[N,E](nodes, edges)(
-                               edgeT, config)
+    DefaultGraphImpl.from[N,E](nodes, edges)(edgeT, config)
   implicit def cbfUnDi[N, E[X] <: EdgeLikeIn[X]](implicit edgeT: TypeTag[E[N]],
                                                  config: Config = defaultConfig) =
-    new GraphCanBuildFrom[N,E]()(edgeT, config).asInstanceOf[
-      GraphCanBuildFrom[N,E]
-      with CanBuildFrom[Graph[_,UnDiEdge], Param[N,E], Graph[N,E]]]
+    new GraphCanBuildFrom[N,E]()(edgeT, config).asInstanceOf[GraphCanBuildFrom[N,E]
+        with CanBuildFrom[Graph[_,UnDiEdge], Param[N,E], Graph[N,E]]]
 }
 @SerialVersionUID(73L)
 class DefaultGraphImpl[N, E[X] <: EdgeLikeIn[X]]
-    ( iniNodes: Iterable[N]    = Set[N](),
-      iniEdges: Iterable[E[N]] = Set[E[N]]())
+    ( iniNodes: Iterable[N] = Set[N](),
+      iniEdges: Iterable[E[N] with EdgeCopy[E]] = Set[E[N] with EdgeCopy[E]]())
     ( implicit @transient override val edgeT: TypeTag[E[N]],
       override val config: DefaultGraphImpl.Config with AdjacencyListArrayConfig)
   extends Graph[N,E]
-  with    AdjacencyListGraph[N, E, DefaultGraphImpl]
+  with    AdjacencyListGraph[N,E,DefaultGraphImpl]
   with    GraphTraversalImpl[N,E]
 {
   @transient override final val graphCompanion = DefaultGraphImpl
@@ -305,10 +314,10 @@ class DefaultGraphImpl[N, E[X] <: EdgeLikeIn[X]]
         delEdges.asInstanceOf[Iterable[AdjacencyListBase[N,E,DefaultGraphImpl]#EdgeT]],
         ripple, addNodes, addEdges)
   }
-  override protected[this] def newBuilder = new GraphBuilder[N,E,DefaultGraphImpl](DefaultGraphImpl)
+  override protected[this] def newBuilder = GraphBuilder[N,E,DefaultGraphImpl](DefaultGraphImpl)
   @inline final override def empty: DefaultGraphImpl[N,E] = DefaultGraphImpl.empty[N,E]
   @inline final override def clone(): this.type = super.clone.asInstanceOf[this.type]
-                                                                                                                                
+
   @SerialVersionUID(7370L)
   final protected class NodeBase(value: N, hints: ArraySet.Hints)
     extends InnerNodeImpl(value, hints)
@@ -319,11 +328,11 @@ class DefaultGraphImpl[N, E[X] <: EdgeLikeIn[X]]
 object DefaultGraphImpl
   extends MutableGraphCompanion[DefaultGraphImpl]
 {
-	def empty[N, E[X] <: EdgeLikeIn[X]](implicit edgeT: TypeTag[E[N]],
+  def empty[N, E[X] <: EdgeLikeIn[X]](implicit edgeT: TypeTag[E[N]],
                                       config: Config = defaultConfig) =
-	  new DefaultGraphImpl[N,E]()(edgeT, config)
+    new DefaultGraphImpl[N,E]()(edgeT, config)
   override def from[N, E[X] <: EdgeLikeIn[X]](nodes: Iterable[N] = Seq.empty[N],
-                                              edges: Iterable[E[N]])
+                                              edges: Iterable[E[N] with EdgeCopy[E]])
                                              (implicit edgeT: TypeTag[E[N]],
                                               config: Config = defaultConfig) =
     new DefaultGraphImpl[N,E](nodes, edges)(

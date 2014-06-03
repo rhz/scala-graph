@@ -7,7 +7,7 @@ import collection.generic.CanBuildFrom
 import collection.mutable.{Builder, ListBuffer}
 import scala.reflect.runtime.universe._
 
-import GraphEdge.{EdgeLike, EdgeCompanionBase}
+import GraphEdge.{EdgeLike, EdgeCompanionBase, EdgeCopy}
 import GraphPredef.{EdgeLikeIn, Param, OuterNode}
 import config.{GraphConfig, CoreConfig}
 import mutable.GraphBuilder
@@ -67,10 +67,10 @@ trait GraphCompanion[+CC[N, E[X] <: EdgeLikeIn[X]] <: Graph[N,E] with GraphLike[
    * @return  A new graph instance containing `nodes` and all edge ends
    *          and `edges`.
    */
-  def from [N, E[X] <: EdgeLikeIn[X]](nodes: collection.Iterable[N] = Seq.empty[N],
-                                      edges: collection.Iterable[E[N]])
-                                     (implicit edgeT: TypeTag[E[N]],
-                                      config: Config): CC[N,E]
+  def from[N, E[X] <: EdgeLikeIn[X]](nodes: Iterable[N] = Seq.empty[N],
+                                     edges: Iterable[E[N] with EdgeCopy[E]])
+                                    (implicit edgeT: TypeTag[E[N]],
+                                     config: Config): CC[N,E]
   /**
    * Produces a graph containing the results of some element computation a number of times.
    * $DUPLEXCL
@@ -115,10 +115,10 @@ trait GraphCoreCompanion[+CC[N, E[X] <: EdgeLikeIn[X]] <: Graph[N,E] with GraphL
                                      (implicit edgeT: TypeTag[E[N]],
                                       config: Config = defaultConfig): CC[N,E] =
     super.apply(elems: _*)(edgeT, config)
-  def from [N, E[X] <: EdgeLikeIn[X]](nodes: collection.Iterable[N] = Seq.empty[N],
-                                      edges: collection.Iterable[E[N]])
-                                     (implicit edgeT: TypeTag[E[N]],
-                                      config: Config = defaultConfig): CC[N,E]
+  def from[N, E[X] <: EdgeLikeIn[X]](nodes: Iterable[N] = Seq.empty[N],
+                                     edges: Iterable[E[N] with EdgeCopy[E]])
+                                    (implicit edgeT: TypeTag[E[N]],
+                                     config: Config = defaultConfig): CC[N,E]
   override
   def fill[N, E[X] <: EdgeLikeIn[X]] (nr: Int)(elem: => Param[N,E])
                                      (implicit edgeT: TypeTag[E[N]],

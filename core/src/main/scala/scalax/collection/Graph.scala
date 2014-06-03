@@ -8,7 +8,7 @@ import scala.reflect.runtime.universe._
 
 import GraphPredef.{EdgeLikeIn, Param, InParam, OutParam,
                     OuterNode, InnerNodeParam, OuterEdge, InnerEdgeParam}
-import GraphEdge.{EdgeLike, EdgeCompanionBase, DiHyperEdgeLike, UnDiEdge, DiEdge}
+import GraphEdge.{EdgeLike, EdgeCompanionBase, DiHyperEdgeLike, UnDiEdge, DiEdge, EdgeCopy}
 import generic.{GraphCompanion, GraphCoreCompanion}
 import config.GraphConfig
 import io._
@@ -278,7 +278,7 @@ trait GraphLike[N,
    *  @return the new supergraph containing all nodes and edges of this
    *          graph plus `edge`.
    */
-  protected def +#(edge: E[N]): This[N,E]
+  protected def +# (edge: E[N] with EdgeCopy[E]): This[N,E]
   /** Creates a new supergraph with an additional node or edge, unless the
    *  node or edge passed is already present.
    *
@@ -318,19 +318,19 @@ trait GraphLike[N,
     })
   /** Implements the heart of `++` calling the `from` factory method of the companion object.
    *  $REIMPLFACTORY */
-  protected def plusPlus(newNodes: Iterable[N], newEdges: Iterable[E[N]]): This[N,E] =
+  protected def plusPlus(newNodes: Iterable[N], newEdges: Iterable[E[N] with EdgeCopy[E]]): This[N,E] =
     graphCompanion.from[N,E](nodes.toOuter ++ newNodes,
-                             edges.toOuter ++ newEdges).asInstanceOf[This[N,E]]
+                             edges.toOuter ++ newEdges) //.asInstanceOf[This[N,E]]
   /** Implements the heart of `--` calling the `from` factory method of the companion object.
    *  $REIMPLFACTORY */
-  protected def minusMinus(delNodes: Iterable[N], delEdges: Iterable[E[N]]): This[N,E] = {
+  protected def minusMinus(delNodes: Iterable[N], delEdges: Iterable[E[N] with EdgeCopy[E]]): This[N,E] = {
     val delNodesEdges = minusMinusNodesEdges(delNodes, delEdges)
-    graphCompanion.from[N,E](delNodesEdges._1, delNodesEdges._2).asInstanceOf[This[N,E]]
+    graphCompanion.from[N,E](delNodesEdges._1, delNodesEdges._2) //.asInstanceOf[This[N,E]]
   }
   /** Calculates the `nodes` and `edges` arguments to be passed to a factory method
    *  when delNodes and delEdges are to be deleted by `--`.
    */
-  protected def minusMinusNodesEdges(delNodes: Iterable[N], delEdges: Iterable[E[N]]) =
+  protected def minusMinusNodesEdges(delNodes: Iterable[N], delEdges: Iterable[E[N] with EdgeCopy[E]]) =
     ( nodes.toOuter -- delNodes,
       { val delNodeSet = delNodes.toSet
         val restEdges = 
@@ -362,7 +362,7 @@ trait GraphLike[N,
    *  @return a new subgraph of this graph that contains all nodes and edges of this graph
    *          except of `edge`.
    */
-  protected def -#(edge: E[N]): This[N,E]
+  protected def -# (edge: E[N] with EdgeCopy[E]): This[N,E]
   /** Creates a new subgraph consisting of all nodes and edges of this graph except `edge`
    *  and those nodes which are incident with `edge` and would become edge-less after deletion. 
    *
@@ -370,7 +370,7 @@ trait GraphLike[N,
    *  @return a new subgraph of this graph after the "ripple" deletion of `edge` from
    *          this graph.
    */
-  protected def -!#(edge: E[N]): This[N,E]
+  protected def -!# (edge: E[N] with EdgeCopy[E]): This[N,E]
   /** Creates a new subgraph consisting of all nodes and edges of this graph except `elem`.
    *  If `elem` is of type N, this method maps to `-(node: N)`. Otherwise the edge is deleted
    *  leaving the node set unchanged.
@@ -494,18 +494,21 @@ trait Graph[N, E[X] <: EdgeLikeIn[X]]
 object Graph
   extends GraphCoreCompanion[Graph]
 {
-  override def newBuilder[N, E[X] <: EdgeLikeIn[X]](implicit edgeT: TypeTag[E[N]],
-                                                    config: Config) =
-    immutable.Graph.newBuilder[N,E](edgeT, config)
+  // RHZ: If I understand correctly, this new newBuilder is calling
+  // GraphCompanion.newBuilder in the end, because immutable.Graph
+  // inherits newEdge from GraphCompanion (via GraphCoreCompanion ->
+  // ImmutableGraphCompanion)
+  // override def newBuilder[N, E[X] <: EdgeLikeIn[X]](implicit edgeT: TypeTag[E[N]],
+  //                                                   config: Config) =
+  //   immutable.Graph.newBuilder[N,E](edgeT, config)
   def empty[N, E[X] <: EdgeLikeIn[X]](implicit edgeT: TypeTag[E[N]],
                                       config: Config = defaultConfig): Graph[N,E] =
     immutable.Graph.empty[N,E](edgeT, config)
   def from [N, E[X] <: EdgeLikeIn[X]](nodes: Iterable[N] = Seq.empty[N],
-                                      edges: Iterable[E[N]])
+                                      edges: Iterable[E[N] with EdgeCopy[E]])
                                      (implicit edgeT: TypeTag[E[N]],
                                       config: Config = defaultConfig): Graph[N,E] =
-    immutable.Graph.from[N,E](nodes, edges)(
-                              edgeT, config)
+    immutable.Graph.from[N,E](nodes, edges)(edgeT, config)
 
   implicit def cbfUnDi[N, E[X] <: EdgeLikeIn[X]](implicit edgeT: TypeTag[E[N]],
                                                  config: Config = defaultConfig) =

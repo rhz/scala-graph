@@ -5,7 +5,7 @@ import collection.{Set, SortedSet, SortedMap}
 import util.Random
 
 import GraphPredef.{EdgeLikeIn, NodeParam, OuterNode, InnerNodeParam, OuterEdge, InnerEdgeParam}
-import GraphEdge.{EdgeLike, EdgeCompanionBase, DiHyperEdgeLike}
+import GraphEdge.{EdgeLike, EdgeCompanionBase, DiHyperEdgeLike, EdgeCopy}
 import generic.AnyOrdering
 import mutable.ArraySet
 import interfaces.ExtSetMethods
@@ -43,8 +43,8 @@ trait GraphBase[N, E[X] <: EdgeLikeIn[X]]
    * @param nodes $INNODES
    * @param edges $INEDGES
    */
-  protected def initialize( nodes: Iterable[N],
-                            edges: Iterable[E[N]] ) {
+  protected def initialize(nodes: Iterable[N],
+                           edges: Iterable[E[N] with EdgeCopy[E]]) {
     this.nodes.initialize(nodes, edges)
     this.edges.initialize(edges)
   }
@@ -429,7 +429,7 @@ trait GraphBase[N, E[X] <: EdgeLikeIn[X]]
      * This edge contains references to inner nodes while the original outer
      * edge contained references to outer nodes.
      */
-    def edge: E[NodeT]
+    def edge: E[NodeT] with EdgeCopy[E]
     /**
      * The inner nodes incident with this inner edge.
      * This is just a synonym to `this` that extends `Iterable[NodeT]`.
@@ -494,7 +494,7 @@ trait GraphBase[N, E[X] <: EdgeLikeIn[X]]
       else None
   }
   object Edge {
-    def apply(innerEdge: E[NodeT]) = newEdge(innerEdge)
+    def apply(innerEdge: E[NodeT] with EdgeCopy[E]) = newEdge(innerEdge)
     def unapply(e: EdgeT) = Some(e)
 
     protected var freshNodes = Map[N,NodeT]()
@@ -558,8 +558,9 @@ trait GraphBase[N, E[X] <: EdgeLikeIn[X]]
     // override def iterator: Iterator[NodeT] = edge.iterator.asInstanceOf[Iterator[NodeT]]
     override def stringPrefix = super.stringPrefix
   }
-  protected def newEdge(innerEdge: E[NodeT]): EdgeT
-  @inline final protected implicit def edgeToEdgeCont(e: E[N]): E[NodeT] = Edge.edgeToEdgeCont(e)
+  protected def newEdge(innerEdge: E[NodeT] with EdgeCopy[E]): EdgeT
+  @inline final protected implicit def edgeToEdgeCont(e: E[N] with EdgeCopy[E])
+      : E[NodeT] with EdgeCopy[E] = Edge.edgeToEdgeCont(e)
 
   @transient final lazy val defaultEdgeOrdering = EdgeOrdering (
     (a: EdgeT, b: EdgeT) => {
@@ -576,7 +577,7 @@ trait GraphBase[N, E[X] <: EdgeLikeIn[X]]
      *  
      * @param edges $INEDGES
      */
-    protected[collection] def initialize(edges: Iterable[E[N]]): Unit
+    protected[collection] def initialize(edges: Iterable[E[N] with EdgeCopy[E]]): Unit
     def contains(node: NodeT): Boolean
     override def stringPrefix: String = "EdgeSet"
     /**
@@ -612,7 +613,7 @@ trait GraphBase[N, E[X] <: EdgeLikeIn[X]]
     /**
      * Converts this edge set to a set of outer edges.
      */
-    def toOuter: Set[E[N]] = (this map (_.toOuter))
+    def toOuter: Set[E[N] with EdgeCopy[E]] = (this map (_.toOuter))
     @deprecated("Use toOuter instead", "1.8.0") def toEdgeInSet = toOuter
     
     final def draw(random: Random) = (nodes draw random).edges draw random

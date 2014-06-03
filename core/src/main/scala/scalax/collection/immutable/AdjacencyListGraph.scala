@@ -5,6 +5,7 @@ import language.higherKinds
 import collection.Set
 
 import GraphPredef.EdgeLikeIn
+import GraphEdge.EdgeCopy
 import mutable.ArraySet
 
 /** Implements an incident list based immutable graph representation.
@@ -52,12 +53,12 @@ trait AdjacencyListGraph[N,
 
   type EdgeT = EdgeBase
   @inline final protected def newEdgeTArray(size: Int): Array[EdgeT] = new Array[EdgeT](size)
-  @inline final override protected def newEdge(innerEdge: E[NodeT]) = new EdgeT(innerEdge)
+  @inline final override protected def newEdge(innerEdge: E[NodeT] with EdgeCopy[E]) = new EdgeT(innerEdge)
   type EdgeSetT = EdgeSet
   @SerialVersionUID(7873L)
   class EdgeSet extends super.EdgeSet
   {
-    override protected[collection] def initialize(edges: collection.Iterable[E[N]]) {
+    override protected[collection] def initialize(edges: Iterable[E[N] with EdgeCopy[E]]) {
       if (edges ne null)
         edges foreach (this += Edge(_))
     }
@@ -74,35 +75,36 @@ trait AdjacencyListGraph[N,
   override val edges: EdgeSetT
 
   def copy(nodes: collection.Iterable[N],
-           edges: collection.Iterable[E[N]]): This[N,E]
-  def + (n: N)  = if (nodes contains Node(n)) this
-                  else copy(nodes.toOuter.toBuffer += n,
-                            edges.toOuter)
+           edges: collection.Iterable[E[N] with EdgeCopy[E]]): This[N,E]
+  def + (n: N) = if (nodes contains Node(n)) this
+                 else copy(nodes.toOuter.toBuffer += n,
+                           edges.toOuter)
   protected
-  def +#(e: E[N]) = if (edges contains Edge(e)) this
-                    else copy(nodes.toOuter,
-                              edges.toOuter.toBuffer += e)
-  def - (n: N)  = nodes find (nf => nf.value == n) match {
-                    case Some(nf) => copy(nodes.toOuter.toBuffer  -= n,
-                                          edges.toOuter.toBuffer --= (nf.edges map (_.toOuter)))
-                    case None     => this
-                  }
-  def -?(n: N)  = nodes find n match {
-                    case Some(nf) => val newNodes = nodes.toOuter.toBuffer
-                                     val newEdges = edges.toOuter.toBuffer
-                                     nodes.subtract(nf,
-                                                    false,
-                                                    nf => newNodes  -= n,
-                                                    nf => newEdges --= (nf.edges map (_.toOuter)))
-                                     copy(newNodes, newEdges)
-                    case None     => this
-                  }
-  protected
-  def -#(e: E[N]) = if (edges contains Edge(e))
-                      copy(nodes.toOuter,
-                           edges.toOuter.toBuffer -= e)
-                    else this
-  protected def -!#(e: E[N]) = edges find (ef => ef == e) match {
+  def +# (e: E[N] with EdgeCopy[E]) = if (edges contains Edge(e)) this
+                                      else copy(nodes.toOuter,
+                                                edges.toOuter.toBuffer += e)
+  def - (n: N) = nodes find (nf => nf.value == n) match {
+    case Some(nf) => copy(nodes.toOuter.toBuffer  -= n,
+                          edges.toOuter.toBuffer --= (nf.edges map (_.toOuter)))
+    case None     => this
+  }
+  def -? (n: N) = nodes find n match {
+    case Some(nf) => {
+      val newNodes = nodes.toOuter.toBuffer
+      val newEdges = edges.toOuter.toBuffer
+      nodes.subtract(nf, false,
+        nf => newNodes  -= n,
+        nf => newEdges --= (nf.edges map (_.toOuter)))
+      copy(newNodes, newEdges)
+    }
+    case None => this
+  }
+  protected def -# (e: E[N] with EdgeCopy[E]) =
+    if (edges contains Edge(e))
+      copy(nodes.toOuter,
+        edges.toOuter.toBuffer -= e)
+    else this
+  protected def -!# (e: E[N] with EdgeCopy[E]) = edges find (ef => ef == e) match {
     case Some(ef) => copy(nodes.toOuter.toBuffer --= ef.privateNodes map (n => n.value),
                           edges.toOuter.toBuffer  -= e)
     case None     => this

@@ -473,10 +473,10 @@ object GraphEdge {
    * @author Peter Empen
    */
   trait HyperEdgeCompanion[+E[N] <: EdgeLike[N]] extends EdgeCompanionBase[E] {
-    def apply[N](node_1: N, node_2: N, nodes: N*): E[N]
+    // def apply[N](node_1: N, node_2: N, nodes: N*): E[N] with EdgeCopy[E]
     // TODO: Remove all the `from`s and stick to `apply` for consistency
     /** @param nodes must be of arity >= 2 */
-    protected[collection] def from[N](nodes: Iterable[N]): E[N]
+    protected[collection] def from[N](nodes: Iterable[N]): E[N] with EdgeCopy[E]
   }
   trait DiHyperEdgeCompanion[+E[N] <: EdgeLike[N]] extends EdgeCompanionBase[E] {
     def apply[N](s1: N, sources: N*)(t1: N, targets: N*): E[N] with EdgeCopy[E]
@@ -490,9 +490,9 @@ object GraphEdge {
    * @author Peter Empen
    */
   trait EdgeCompanion[+E[N] <: EdgeLike[N]] extends EdgeCompanionBase[E] {
-    def apply[N](node_1: N, node_2: N): E[N]
+    def apply[N](node_1: N, node_2: N): E[N] with EdgeCopy[E]
     /** @param nodes must be of arity == 2 */
-    protected[collection] def from[N](n1: N, n2: N): E[N]
+    protected[collection] def from[N](n1: N, n2: N): E[N] with EdgeCopy[E]
   }
   // ------------------------------------------------------------------------ *
   /** Represents an undirected hyperedge (hyperlink) in a hypergraph

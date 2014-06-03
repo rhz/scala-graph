@@ -48,8 +48,8 @@ object GraphPredef {
       def nodeParams = partitioned._1.asInstanceOf[Iterable[NodeParam[N]]]
       def edgeParams = partitioned._2.asInstanceOf[Iterable[EdgeParam]]
   
-      def toOuterNodes: Iterable[N]    = nodeParams map (_.value)
-      def toOuterEdges: Iterable[E[N]] = edgeParams map {_ match {
+      def toOuterNodes: Iterable[N] = nodeParams map (_.value)
+      def toOuterEdges: Iterable[E[N] with EdgeCopy[E]] = edgeParams map { _ match {
         case e: OuterEdge[N,E] => e.edge
         case e: InnerEdgeParam[N,E,_,E] => e.asEdgeTProjection[N,E].toOuter
       }}
@@ -168,10 +168,10 @@ object GraphPredef {
    * @tparam NI  the type of the nodes (vertices) this graph is passed to by the user.
    * @tparam EI  the kind of the edges (links) this graph is passed to by the user.
    */
-  trait OuterEdge  [NI, +EI[X<:NI] <: EdgeLike[X]]
-    extends InParam[NI,EI] with EdgeParam
-  { this: EI[NI] =>
-    def edge: EI[NI] = this
+  trait OuterEdge[NI, +EI[X] <: EdgeLike[X]]
+    extends OuterElem[NI,EI] with EdgeParam
+  { this: EI[NI] with EdgeCopy[EI] =>
+    def edge: EI[NI] with EdgeCopy[EI] = this
   }
   
   /** @tparam NI  the type of the nodes (vertices) this graph is passed to by the user.
