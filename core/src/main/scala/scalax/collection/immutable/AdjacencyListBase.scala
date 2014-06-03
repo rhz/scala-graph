@@ -112,7 +112,7 @@ trait AdjacencyListBase[N,
 
     final protected[collection] def addNeighbors(edge: EdgeT,
                                                  add: (NodeT) => Unit) {
-      edge foreach (n => if (n ne this) add(n))
+      edge.nodes foreach (n => if (n ne this) add(n))
     }
 
     final def outgoing: Set[EdgeT] = edges filter (e =>

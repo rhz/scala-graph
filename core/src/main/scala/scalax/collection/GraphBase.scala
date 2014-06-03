@@ -246,7 +246,7 @@ trait GraphBase[N, E[X] <: EdgeLikeIn[X]]
      */
     def degree: Int = {
       var cnt: Int = 0
-      edges foreach { e => cnt += e.count(_ eq this) }
+      edges foreach { e => cnt += e.nodes.count(_ eq this) }
       cnt
     }
     /** Returns whether this node's degree equals to 0.
@@ -420,7 +420,7 @@ trait GraphBase[N, E[X] <: EdgeLikeIn[X]]
   }
   trait Edge extends Serializable
   trait InnerEdge
-      extends Iterable[NodeT] with InnerEdgeParam[N,E,NodeT,E] with Edge with InnerElem {
+      extends /*Iterable[NodeT] with*/ InnerEdgeParam[N,E,NodeT,E] with Edge with InnerElem {
     
     override def stringPrefix = super[InnerEdgeParam].stringPrefix
     
@@ -434,13 +434,13 @@ trait GraphBase[N, E[X] <: EdgeLikeIn[X]]
      * The inner nodes incident with this inner edge.
      * This is just a synonym to `this` that extends `Iterable[NodeT]`.
      */
-    @inline final def nodes: Iterable[NodeT] = this 
+    @inline final def nodes: Iterable[NodeT] = edge.nodes
     /**
      * Finds nodes of this edge which only participate in this edge.
      * 
      * @return those nodes of this edge which do not participate in any other edge 
      */
-    def privateNodes: Set[NodeT] = filter(_.edges.size == 1).toSet 
+    def privateNodes: Set[NodeT] = nodes.filter(_.edges.size == 1).toSet
     /**
      * All connecting edges, that is all edges at any of the nodes incident with this edge.
      *
@@ -448,7 +448,7 @@ trait GraphBase[N, E[X] <: EdgeLikeIn[X]]
      */
     def adjacents: Set[EdgeT] = {
       var a = ArraySet[EdgeT]()
-      edge foreach {n => a ++= n.edges}
+      nodes foreach {n => a ++= n.edges}
       a -= a.find(_ == edge).get
     }
     /** Synonym for `adjacents`. */
@@ -463,8 +463,8 @@ trait GraphBase[N, E[X] <: EdgeLikeIn[X]]
     //   case unDi @ _                   => unDi.edge._2
     // }
 
-    override def canEqual(that: Any) = that.isInstanceOf[GraphBase[N,E]#InnerEdge] ||
-                                       that.isInstanceOf[EdgeLike[_]]
+    def canEqual(that: Any) = that.isInstanceOf[GraphBase[N,E]#InnerEdge] ||
+                              that.isInstanceOf[EdgeLike[_]]
     override def equals(other: Any) = other match {
       case that: GraphBase[N,E]#InnerEdge => (this eq that) ||
                                                  (this.edge eq that.edge) ||
@@ -553,8 +553,9 @@ trait GraphBase[N, E[X] <: EdgeLikeIn[X]]
       def compare(e1: EdgeT, e2: EdgeT): Int = e1.arity compare e2.arity
     }
   }
-  class EdgeBase(override val edge: E[NodeT]) extends InnerEdgeParam[N,E,NodeT,E] with InnerEdge {
-    override def iterator: Iterator[NodeT] = edge.iterator.asInstanceOf[Iterator[NodeT]]
+  class EdgeBase(override val edge: E[NodeT] with EdgeCopy[E])
+      extends InnerEdgeParam[N,E,NodeT,E] with InnerEdge {
+    // override def iterator: Iterator[NodeT] = edge.iterator.asInstanceOf[Iterator[NodeT]]
     override def stringPrefix = super.stringPrefix
   }
   protected def newEdge(innerEdge: E[NodeT]): EdgeT
@@ -562,7 +563,7 @@ trait GraphBase[N, E[X] <: EdgeLikeIn[X]]
 
   @transient final lazy val defaultEdgeOrdering = EdgeOrdering (
     (a: EdgeT, b: EdgeT) => {
-      val unequal = (a.edge zip b.edge) find (z => z._1 != z._2)
+      val unequal = (a.edge.nodes zip b.edge.nodes) find (z => z._1 != z._2)
       unequal map (t => anyOrdering.compare(t._1.value, t._2.value)) getOrElse
                   Ordering.Int.compare(a.arity, b.arity)
     }

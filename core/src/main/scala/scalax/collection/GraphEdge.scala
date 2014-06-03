@@ -31,18 +31,18 @@ object GraphEdge {
    * @define ISAT In case this edge is undirected this method maps to `isAt`
    * @author Peter Empen
    */
-  sealed trait EdgeLike[+N] extends Iterable[N] with Eq with Serializable
+  /*sealed*/ trait EdgeLike[+N] extends /*Iterable[N] with*/ Eq with Serializable
   {
     // RHZ: Should we expose the N type parameter?
     // type Node = N
     /** The end nodes joined by this edge. */
     def nodes: Iterable[N]
-    /** Iterator for the nodes (end-points) of this edge.
-     */
-    def iterator: Iterator[N]
-    /** Sequence of the end points of this edge.
-     */
-    def nodeSeq: Seq[N] = iterator.toSeq
+    // /** Iterator for the nodes (end-points) of this edge.
+    //  */
+    // def iterator: Iterator[N]
+    // /** Sequence of the end points of this edge.
+    //  */
+    // def nodeSeq: Seq[N] = iterator.toSeq
     /** The first node. Same as _n(0). */
     def _1: N = nodes.head
     /** The second node. Same as _n(1). */
@@ -117,9 +117,7 @@ object GraphEdge {
      * In case of an undirected hyperedge, a loop is given if any pair of incident
      * nodes has equal nodes.
      */
-    def isLooping = if (arity == 2) _1 == _2
-                    else if (directed) iterator.drop(1) exists (_ == _1)
-                    else (Set() ++= iterator).size < arity
+    def isLooping: Boolean
     /** Same as `! looping`. */                
     final def nonLooping = ! isLooping 
     /**
@@ -197,7 +195,7 @@ object GraphEdge {
      *  b) `p1` holds for a source and `p2` for a target of this directed edge. */
     def matches(p1: N => Boolean, p2: N => Boolean): Boolean
 
-    override def canEqual(that: Any): Boolean = that.isInstanceOf[EdgeLike[_]]
+    def canEqual(that: Any): Boolean = that.isInstanceOf[EdgeLike[_]]
 
     override def equals(other: Any): Boolean = other match {
       case that: EdgeLike[_] => 
@@ -222,7 +220,7 @@ object GraphEdge {
     } catch { // Malformed class name
       case e: java.lang.InternalError => this.getClass.getName
     }
-    override def stringPrefix = "Nodes"
+    def stringPrefix = "Nodes"
     protected def nodesToStringWithParenthesis = false
     protected def nodesToStringSeparator = EdgeLike.nodeSeparator
     protected def nodesToString =
@@ -517,12 +515,16 @@ object GraphEdge {
     override protected[collection]
     def copy[NN](newNodes: Iterable[NN]) = new HyperEdge[NN](newNodes)
 
-    /** Iterator for the nodes (end-points) of this edge.
-     */
-    def iterator: Iterator[N] = nodes match {
-      case i: Iterable[N] => i.iterator
-      case p: Product   => p.productIterator.asInstanceOf[Iterator[N]] 
-    }
+    // /** Iterator for the nodes (end-points) of this edge.
+    //  */
+    // def iterator: Iterator[N] = nodes match {
+    //   case i: Iterable[N] => i.iterator
+    //   case p: Product => p.productIterator.asInstanceOf[Iterator[N]]
+    // }
+
+    override def isLooping = nodes.toSet.size == arity
+    // Or:
+    // override def isLooping = nodes.tails forall (xs => xs.tail exists (xs.head == _))
 
     override def isAt[M>:N](node: M) = nodes exists (_ == node)
     override def isAt(pred: N => Boolean) = nodes exists pred
@@ -732,21 +734,20 @@ object GraphEdge {
       new UnDiEdge[NN](newNodes.head, newNodes.tail.head)
     }
 
-    @inline final override def size = 2
-    override def iterator: Iterator[N] = new AbstractIterator[N] {
-      private var count = 0
-      def hasNext = count < 2
-      def next: N = {
-        count += 1
-        (count: @switch) match {
-          case 1 => _1
-          case 2 => _2
-          case _ => Iterator.empty.next
-        } 
-      }
-    }
-
     @inline final override def arity = 2
+
+    // override def iterator: Iterator[N] = new AbstractIterator[N] {
+    //   private var count = 0
+    //   def hasNext = count < 2
+    //   def next: N = {
+    //     count += 1
+    //     (count: @switch) match {
+    //       case 1 => _1
+    //       case 2 => _2
+    //       case _ => Iterator.empty.next
+    //     }
+    //   }
+    // }
 
     override def isAt[M>:N](node: M) = _1 == node || _2 == node
     override def isAt(pred: N => Boolean) = pred(_1) || pred(_2)

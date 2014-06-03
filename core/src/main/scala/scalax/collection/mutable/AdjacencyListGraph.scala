@@ -79,7 +79,7 @@ trait AdjacencyListGraph[N,
     @inline final def += (node: NodeT): this.type	= { add(node); this }
     protected[collection] def add(edge: EdgeT): Boolean = {
       var someNew = false
-      edge foreach { n =>
+      edge.nodes foreach { n =>
         val inColl = coll findEntry n getOrElse {coll += n; n}
         someNew = (inColl add edge) || someNew
       }
@@ -88,7 +88,7 @@ trait AdjacencyListGraph[N,
     protected[collection] def += (edge: EdgeT): this.type	= { add(edge); this }
     protected[collection] def upsert(edge: EdgeT): Boolean = {
       var someNew = false
-      edge foreach { n =>
+      edge.nodes foreach { n =>
         val inColl = coll findEntry n getOrElse {coll += n; n}
         someNew = (inColl upsert edge) || someNew
       }

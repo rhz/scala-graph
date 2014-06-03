@@ -41,7 +41,7 @@ trait AdjacencyListGraph[N,
       else {val c = copy; c.coll += node; c }
     
     protected[collection] def +=(edge: EdgeT): this.type = {
-      edge foreach { n =>
+      edge.nodes foreach { n =>
         val inColl = coll findEntry n getOrElse {coll += n; n}
         inColl += edge
       }

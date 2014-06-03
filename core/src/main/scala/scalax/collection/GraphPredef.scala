@@ -229,13 +229,15 @@ object GraphPredef {
                     case n => OuterNode(n)
 //                    case InnerNodeParam(n) => OuterNode(n)
           }}
-  def nodePredicate [NI, EI[X<:NI] <: EdgeLike[X], NO <: InnerNodeParam[NI], EO[X<:NO] <: EdgeLike[X]]
-      (pred: NI => Boolean) =
-    (out: Param[NI,EI]) => out match {
-      case n: InnerNodeParam[NI] => pred(n.value)
-      case e: InnerEdgeParam[NI,EI,NO,EO] => e.edge forall (n => pred(n.value))
-      case _ => false
-    }
+  def nodePredicate[NI,
+                    EI[X<:NI] <: EdgeLike[X],
+                    NO <: InnerNodeParam[NI],
+                    EO[X<:NO] <: EdgeLike[X]]
+      (pred: NI => Boolean)(out: Param[NI,EI]) = out match {
+    case n: InnerNodeParam[NI] => pred(n.value)
+    case e: InnerEdgeParam[NI,EI,NO,EO] => e.edge.nodes forall (n => pred(n.value))
+    case _ => false
+  }
 
 //  def edgePredicate [NI, NO <: InnerNodeParam[NI], EC[X<:NO] <: EdgeLike[X]] (pred: EC[NO] => Boolean) =
 //    (out: Param[N,E]) => out match {
@@ -244,10 +246,12 @@ object GraphPredef {
 //      case _ => false
 //    }
 
-  @inline implicit def predicateToNodePredicate
-      [NI, EI[X<:NI] <: EdgeLike[X], NO <: InnerNodeParam[NI], EC[X<:NO] <: EdgeLike[X]]
-      (p: NI => Boolean) =
-    nodePredicate[NI,EI,NO,EC](p)
+  @inline implicit
+  def predicateToNodePredicate[NI,
+                               EI[X<:NI] <: EdgeLike[X],
+                               NO <: InnerNodeParam[NI],
+                               EC[X<:NO] <: EdgeLike[X]]
+    (p: NI => Boolean) = nodePredicate[NI,EI,NO,EC](p) _
 
 //  @inline implicit def predicateToEdgePredicate[NI, NO <: InnerNodeParam[NI], EC[X<:NO] <: EdgeLike[X]]
 //                                               (p: EC[NO] => Boolean) = edgePredicate[NI,NO,EC](p)

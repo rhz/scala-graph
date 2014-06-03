@@ -334,7 +334,7 @@ trait GraphLike[N,
     ( nodes.toOuter -- delNodes,
       { val delNodeSet = delNodes.toSet
         val restEdges = 
-          for(e <- edges.toOuter if e forall (n =>
+          for(e <- edges.toOuter if e.nodes forall (n =>
               ! (delNodeSet contains n))) yield e
         restEdges -- delEdges
       }
@@ -423,7 +423,7 @@ trait GraphLike[N,
     val (delNodes, delEdges) = (p.toOuterNodes, p.toOuterEdges)
     val unconnectedNodeCandidates = {
       val edgeNodes = MSet.empty[N]
-      delEdges foreach (_ foreach (n => edgeNodes += n))
+      delEdges foreach (_.nodes foreach (n => edgeNodes += n))
       edgeNodes -- delNodes
     }
     val delEdgeSet = {
@@ -460,7 +460,7 @@ trait GraphLike[N,
     }
     val edgePred: PartialFunction[Param[N,E], Boolean] =
       if (edge eq null) {
-        case e: InnerEdgeParam[N,E,_,E] => e.asEdgeT[N,E,ThisGraph](selfGraph) forall (node(_))
+        case e: InnerEdgeParam[N,E,_,E] => e.asEdgeT[N,E,ThisGraph](selfGraph).nodes forall (node(_))
       } else {
         case e: InnerEdgeParam[N,E,_,E] => edge(e.asEdgeT[N,E,ThisGraph](selfGraph))
       }
