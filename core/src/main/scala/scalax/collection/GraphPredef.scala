@@ -20,7 +20,7 @@ object GraphPredef {
    * Supplying this type as the actual type parameter allows to include any kind of edges
    * such as hyper-edges, undirected and directed edges.
    */
-  type EdgeLikeIn[N] = EdgeLike[N] with EdgeCopy[EdgeLike] with OuterEdge[N,EdgeLike] 
+  type EdgeLikeIn[N] = EdgeLike[N] with EdgeCopy[EdgeLike] with OuterEdge[N,EdgeLike]
   /**
    * Denotes all directed edge types for the `E` type parameter of a `Graph`.
    * Supplying this type as the actual type parameter allows to include any kind of directed edges
@@ -39,10 +39,8 @@ object GraphPredef {
     def isOut:  Boolean
   }
   object Param {
-    /**
-     * Enables to query partitions of a collection of `Param`.
-     */
-    final class Partitions[N, E[X]<:EdgeLikeIn[X]](val elems: Iterable[Param[N,E]]) {
+    /** Enables to query partitions of a collection of `Param`. */
+    final class Partitions[N, E[X] <: EdgeLikeIn[X]](val elems: Iterable[Param[N,E]]) {
       lazy val partitioned = elems match {
         case g: Graph[N,E] => (g.nodes, g.edges)
         case x             => x partition (_.isNode)
@@ -58,7 +56,7 @@ object GraphPredef {
 
       def toInParams: Iterable[InParam[N,E]] = elems map {_ match {
         case in: InParam[N,E] => in
-        case n: InnerNodeParam[N]         => OuterNode(n.value)
+        case n: InnerNodeParam[N] => OuterNode(n.value)
         case e: InnerEdgeParam[N,E,_,E] => e.asEdgeTProjection[N,E].toOuter.asInstanceOf[OuterEdge[N,E]]
       }}
     }
@@ -106,6 +104,9 @@ object GraphPredef {
     def isIn  = false
     def isOut = true
   }
+  /** Same as `OutParam`. */
+  type InnerElem[N, +E[X<:N] <: EdgeLike[X]] = OutParam[N,E]
+
   trait NodeParam[N] {
     def value: N
     def isNode = true 
@@ -118,13 +119,17 @@ object GraphPredef {
   /** @tparam NI  the type of the nodes (vertices) this graph is passed to by the user.
    */
   case class OuterNode[NI] (override val value: NI) 
-    extends InParam[NI, Nothing]
+    extends OuterElem[NI,Nothing]
        with NodeParam[NI]
 
   /** @tparam NI  the type of the nodes (vertices) this graph is passed to by the user.
    */
-  trait InnerNodeParam[NI] extends OutParam[NI,Nothing] with NodeParam[NI] {
-    def isContaining[N, E[X]<:EdgeLikeIn[X]](g: GraphBase[N,E]): Boolean
+  trait InnerNodeParam[NI]
+      extends InnerElem[NI,Nothing]
+         with NodeParam[NI] {
+
+    // RHZ: What's this method for?
+    def isContaining[N, E[X] <: EdgeLikeIn[X]](g: GraphBase[N,E]): Boolean
 
     protected[collection] final
     def asNodeT[N <: NI, E[X]<:EdgeLikeIn[X], G <: GraphBase[N,E] with Singleton]
@@ -134,6 +139,7 @@ object GraphPredef {
     def asNodeTProjection[N <: NI, E[X]<:EdgeLikeIn[X]]: GraphBase[N,E]#NodeT =
       this.asInstanceOf[Graph[N,E]#NodeT]
 
+    // RHZ: What's this method for? Why is it named `fold`?
     final def fold[N <: NI, E[X]<:EdgeLikeIn[X], G <: GraphBase[N,E] with Singleton, T]
         (g: G)(fa: g.NodeT => T, fb: GraphBase[N,E]#NodeT => T): T =
       if (isContaining[N,E](g)) fa(asNodeT[N,E,G](g))
@@ -172,8 +178,11 @@ object GraphPredef {
    *  @tparam NO  the type of the nodes (vertices) this graph passes back.
    *  @tparam EC  the kind of the edges (links) contained in edges of type EdgeT this graph passes back.
    */
-  trait InnerEdgeParam [NI, +EI[X<:NI] <: EdgeLike[X], NO <: InnerNodeParam[NI], +EO[X<:NO] <: EdgeLike[X]]
-    extends OutParam[NI,EI] with EdgeParam
+  trait InnerEdgeParam[NI,
+                      +EI[X<:NI] <: EdgeLike[X],
+                       NO <: InnerNodeParam[NI],
+                      +EO[X<:NO] <: EdgeLike[X]]
+    extends InnerElem[NI,EI] with EdgeParam
   { 
     def edge: EO[NO]
     final def isContaining[N <: NI, E[X]<:EdgeLikeIn[X]](g: GraphBase[N,E]): Boolean =
@@ -201,13 +210,16 @@ object GraphPredef {
                             else edge.toString
   }
   object InnerEdgeParam {
-    @inline implicit def toEdge[NI, EI[X<:NI] <: EdgeLike[X], NO <: InnerNodeParam[NI], EO[X<:NO] <: EdgeLike[X]]
-      (innerEdge: InnerEdgeParam[NI,EI,NO,EO]) = innerEdge.edge
+    @inline implicit def toEdge[NI,
+                                EI[X<:NI] <: EdgeLike[X],
+                                NO <: InnerNodeParam[NI],
+                                EO[X<:NO] <: EdgeLike[X]]
+      (innerEdge: InnerEdgeParam[NI,EI,NO,EO]): EO[NO] = innerEdge.edge
   }
   //-----------------------------------------------------------------------//
   import GraphEdge._
   
-  @inline implicit def anyToNode[N]     (n: N) = OuterNode(n)
+  @inline implicit def anyToNode[N](n: N) = OuterNode(n)
   @inline implicit def seqToGraphParam[N, E[X<:N] <: EdgeLikeIn[X]](s: Seq[N]): Seq[InParam[N,E]] =
     s map {_ match {case e: EdgeLike[N] with EdgeCopy[EdgeLike] with OuterEdge[N,E] => e
                     case e: EdgeLike[N] => throw new IllegalArgumentException(
@@ -241,16 +253,18 @@ object GraphPredef {
 //                                               (p: EC[NO] => Boolean) = edgePredicate[NI,NO,EC](p)
 
   final implicit class EdgeAssoc[N1](val n1: N1) extends AnyVal {
-    @inline def ~ [N >: N1, N2 <: N](n2: N2) = new UnDiEdge[N](Tuple2(n1, n2)) 
-    @inline def ~>[N >: N1, N2 <: N](n2: N2) = new   DiEdge[N](Tuple2(n1, n2))
+    @inline def ~ [N >: N1, N2 <: N](n2: N2) = new UnDiEdge[N](n1, n2)
+    @inline def ~>[N >: N1, N2 <: N](n2: N2) = new   DiEdge[N](n1, n2)
   }
 
-  final implicit class HyperEdgeAssoc[NOld](val e: EdgeLikeIn[NOld]) extends AnyVal {
-    @inline def ~ [N >: NOld, NX <: N](n: NX) = { assume (e.undirected)
-      new   HyperEdge[N](NodeProduct(e.iterator.toBuffer += n))
+  final implicit class HyperEdgeAssoc[N1](val e: EdgeLikeIn[N1]) extends AnyVal {
+    // NU is an upper bound, N2 is the type of the input
+    @inline def ~[NU >: N1, N2 <: NU](n: N2): HyperEdge[NU] = {
+      assume(e.undirected)
+      HyperEdge[NU]((Vector[NU]() ++ e.nodes) :+ n)
     }
-    @inline def ~>[N >: NOld, NX <: N](n: NX) = { assume (e.directed)
-      new DiHyperEdge[N](NodeProduct(e.iterator.toBuffer += n))
-    }
+    // @inline def ~>[N >: NOld, NX <: N](n: NX) = { assume (e.directed)
+    //   new DiHyperEdge[N](NodeProduct(e.iterator.toBuffer += n))
+    // }
   }
 }

@@ -476,16 +476,16 @@ trait GraphBase[N, E[X] <: EdgeLikeIn[X]]
     override def hashCode = edge.##
     override def toString = edge.toString
     /** Reconstructs the outer edge by means of the `copy` method. */
-    def toOuter: E[N] = {
-      val newNs = (edge.arity: @scala.annotation.switch) match {
-        case 2 => Tuple2(edge._1.value, edge._2.value)
-        case 3 => Tuple3(edge._1.value, edge._2.value, edge._n(2).value)
-        case 4 => Tuple4(edge._1.value, edge._2.value, edge._n(2).value, edge._n(3).value)
-        case 5 => Tuple5(edge._1.value, edge._2.value, edge._n(2).value, edge._n(3).value, edge._n(4).value)
-        case _ => edge.map(n => n.value).toList 
-      } 
-      edge.copy[N](newNs).asInstanceOf[E[N]]
-    }
+    def toOuter: E[N] with EdgeCopy[E] = edge.copy[N](nodes.map(n => n.value))
+    //   val newNs: Iterable[N] = (edge.arity: @scala.annotation.switch) match {
+    //     case 2 => Tuple2(edge._1.value, edge._2.value)
+    //     case 3 => Tuple3(edge._1.value, edge._2.value, edge._n(2).value)
+    //     case 4 => Tuple4(edge._1.value, edge._2.value, edge._n(2).value, edge._n(3).value)
+    //     case 5 => Tuple5(edge._1.value, edge._2.value, edge._n(2).value, edge._n(3).value, edge._n(4).value)
+    //     case _ => edge.nodes.map(n => n.value).toList
+    //   }
+    //   edge.copy[N](newNs) //.asInstanceOf[E[N]]
+    // }
     @deprecated("Use toOuter instead", "1.8.0") def toEdgeIn = toOuter
   }
   object InnerEdge {
@@ -514,31 +514,32 @@ trait GraphBase[N, E[X] <: EdgeLikeIn[X]]
     /**
      * Creates a new inner edge from the outer `edge` using its
      * factory method `copy` without modifying the node or edge set. */
-    protected[GraphBase] def edgeToEdgeCont(edge: E[N]): E[NodeT] = {
-      val newNodes = (edge.arity: @scala.annotation.switch) match {
-        case 2 => Tuple2(mkNode(edge._1), mkNode(edge._2))
-        case 3 => Tuple3(mkNode(edge._1), mkNode(edge._2), mkNode(edge._n(2)))
-        case 4 => Tuple4(mkNode(edge._1), mkNode(edge._2), mkNode(edge._n(2)), mkNode(edge._n(3)))
-        case 5 => Tuple5(mkNode(edge._1), mkNode(edge._2), mkNode(edge._n(2)), mkNode(edge._n(3)), mkNode(edge._n(4)))
-        case _ => edge.map(n => mkNode(n)).toList 
-      }
+    protected[GraphBase] def edgeToEdgeCont(edge: E[N] with EdgeCopy[E]): E[NodeT] with EdgeCopy[E] = {
+      // val newNodes = (edge.arity: @scala.annotation.switch) match {
+      //   case 2 => Tuple2(mkNode(edge._1), mkNode(edge._2))
+      //   case 3 => Tuple3(mkNode(edge._1), mkNode(edge._2), mkNode(edge._n(2)))
+      //   case 4 => Tuple4(mkNode(edge._1), mkNode(edge._2), mkNode(edge._n(2)), mkNode(edge._n(3)))
+      //   case 5 => Tuple5(mkNode(edge._1), mkNode(edge._2), mkNode(edge._n(2)), mkNode(edge._n(3)), mkNode(edge._n(4)))
+      //   case _ => edge.nodes.map(n => mkNode(n)).toList
+      // }
       freshNodes = Map.empty[N,NodeT]
-      edge.copy[NodeT](newNodes).asInstanceOf[E[NodeT]]
+      // edge.copy[NodeT](newNodes).asInstanceOf[E[NodeT]]
+      edge.copy[NodeT](edge.nodes.map(n => mkNode(n)))
     }
-    def mkNodes(node_1: N, node_2: N, nodes:  N *): Product =
-    {
-      val (n_1, n_2) = (mkNode(node_1), mkNode(node_2))
-      val newNodes =
-        if   (nodes.isEmpty) Tuple2(n_1, n_2)
-        else (nodes.size: @scala.annotation.switch) match {
-          case 1 => Tuple3(n_1, n_2, mkNode(nodes(0)))
-          case 2 => Tuple4(n_1, n_2, mkNode(nodes(0)), mkNode(nodes(1)))
-          case 3 => Tuple5(n_1, n_2, mkNode(nodes(0)), mkNode(nodes(1)), mkNode(nodes(2)))
-          case _ => (nodes.map(n => mkNode(n)).toList).:::(List(n_1, n_2)) 
-        }
-      freshNodes = Map.empty[N,NodeT]
-      newNodes
-    }
+    // def mkNodes(node_1: N, node_2: N, nodes: N*): Product =
+    // {
+    //   val (n_1, n_2) = (mkNode(node_1), mkNode(node_2))
+    //   val newNodes =
+    //     if   (nodes.isEmpty) Tuple2(n_1, n_2)
+    //     else (nodes.size: @scala.annotation.switch) match {
+    //       case 1 => Tuple3(n_1, n_2, mkNode(nodes(0)))
+    //       case 2 => Tuple4(n_1, n_2, mkNode(nodes(0)), mkNode(nodes(1)))
+    //       case 3 => Tuple5(n_1, n_2, mkNode(nodes(0)), mkNode(nodes(1)), mkNode(nodes(2)))
+    //       case _ => (nodes.map(n => mkNode(n)).toList).:::(List(n_1, n_2))
+    //     }
+    //   freshNodes = Map.empty[N,NodeT]
+    //   newNodes
+    // }
     @inline final implicit def innerEdgeToEdgeCont(edge: EdgeT): E[NodeT] = edge.edge
 
     def defaultWeight(edge: EdgeT) = edge.weight

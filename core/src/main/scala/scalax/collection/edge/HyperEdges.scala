@@ -68,69 +68,72 @@ object WkDiHyperEdge extends WkHyperEdgeCompanion[WkDiHyperEdge] {
 }
 // ------------------------------------------------------------------------- L*
 /** labeled undirected hyperedge. */
-abstract class LHyperEdge[N](nodes: Product)
+abstract class LHyperEdge[N](nodes: Iterable[N])
   extends HyperEdge[N](nodes)
-  with    OuterEdge   [N,LHyperEdge]
-  with    LEdge    [N]
+  with    OuterEdge[N,LHyperEdge]
+  with    LEdge[N]
+  with    EdgeCopy[LHyperEdge] {
+  override protected[collection] def copy[NN](newNodes: Iterable[NN]) =
+    LHyperEdge.newEdge[NN,L1](newNodes, label)
+}
 object LHyperEdge extends LHyperEdgeCompanion[LHyperEdge] {
   @SerialVersionUID(871L) override
-  def newEdge[N,L](nodes: Product, pLabel: L) =
-    new  LHyperEdge[N](nodes)
-    with EdgeCopy  [LHyperEdge] { 
+  def newEdge[N,L](nodes: Iterable[N], l: L) =
+    new LHyperEdge[N](nodes)
+    with EdgeCopy[LHyperEdge] {
       type L1 = L
-      override val label = pLabel
-      override protected[collection]
-      def copy[NN](newNodes: Product) = newEdge[NN,L](newNodes, pLabel)
+      override val label = l
     }
 }
 /** Labeled directed hyperedge. */
-abstract class LDiHyperEdge[N](nodes: Product)
-  extends LHyperEdge     [N](nodes) 
+abstract class LDiHyperEdge[N](override val sources: Iterable[N], override val targets: Iterable[N])
+  extends LHyperEdge[N](sources ++ targets)
   with    DiHyperEdgeLike[N]
-  with    OuterEdge         [N,LDiHyperEdge]
-object LDiHyperEdge extends LHyperEdgeCompanion[LDiHyperEdge] {
-  @SerialVersionUID(873L) override
-  def newEdge[N,L](nodes: Product, pLabel: L) =
-    new  LDiHyperEdge[N](nodes)
-    with EdgeCopy    [LDiHyperEdge] { 
+  with    OuterEdge[N,LDiHyperEdge]
+  with    EdgeCopy[LDiHyperEdge] {
+  override protected[collection] def copy[NN](newNodes: Iterable[NN]) =
+    LDiHyperEdge[NN,L1](newNodes take sources.size, newNodes drop sources.size)(label)
+}
+object LDiHyperEdge extends EdgeCompanionBase[LDiHyperEdge] {
+  def apply[N,L](sources: Iterable[N], targets: Iterable[N])(l: L) =
+    new LDiHyperEdge[N](sources, targets) {
       type L1 = L
-      override val label = pLabel
-      override protected[collection]
-      def copy[NN](newNodes: Product) = newEdge[NN,L](newNodes, pLabel)
+      override val label = l
     }
 }
 // ------------------------------------------------------------------------ Lk*
 import LkBase._
 /** key-labeled undirected hyperedge. */
-abstract class LkHyperEdge[N](nodes: Product)
-  extends LHyperEdge[N](nodes) 
-  with    OuterEdge    [N,LkHyperEdge]
-  with    LkEdge    [N]
+abstract class LkHyperEdge[N](nodes: Iterable[N])
+  extends LHyperEdge[N](nodes)
+  with    OuterEdge[N,LkHyperEdge]
+  with    LkEdge[N]
+  with    EdgeCopy[LkHyperEdge] {
+  override protected[collection] def copy[NN](newNodes: Iterable[NN]) =
+    LkHyperEdge.newEdge[NN,L1](newNodes, label)
+}
 object LkHyperEdge extends LkHyperEdgeCompanion[LkHyperEdge] {
   @SerialVersionUID(872L) override
-  def newEdge[N,L](nodes: Product, pLabel: L) =
-    new  LkHyperEdge[N](nodes)
-    with EdgeCopy   [LkHyperEdge] { 
+  def newEdge[N,L](nodes: Iterable[N], l: L) =
+    new LkHyperEdge[N](nodes) {
       type L1 = L
-      override val label = pLabel
-      override protected[collection]
-      def copy[NN](newNodes: Product) = newEdge[NN,L](newNodes, pLabel)
+      override val label = l
     }
 }
 /** key-labeled directed hyperedge. */
-abstract class LkDiHyperEdge[N](nodes: Product)
-  extends LDiHyperEdge[N](nodes) 
-  with    OuterEdge      [N,LkDiHyperEdge]
-  with    LkEdge      [N]
-object LkDiHyperEdge extends LkHyperEdgeCompanion[LkDiHyperEdge] {
-  @SerialVersionUID(874L) override
-  def newEdge[N,L](nodes: Product, pLabel: L) =
-    new  LkDiHyperEdge[N](nodes)
-    with EdgeCopy     [LkDiHyperEdge] { 
+abstract class LkDiHyperEdge[N](sources: Iterable[N], targets: Iterable[N])
+  extends LDiHyperEdge[N](sources, targets)
+  with    OuterEdge[N,LkDiHyperEdge]
+  with    LkEdge[N]
+  with    EdgeCopy[LkDiHyperEdge] {
+  override protected[collection] def copy[NN](newNodes: Iterable[NN]) =
+    LkDiHyperEdge[NN,L1](newNodes take sources.size, newNodes drop sources.size)(label)
+}
+object LkDiHyperEdge extends EdgeCompanionBase[LkDiHyperEdge] {
+  def apply[N,L](sources: Iterable[N], targets: Iterable[N])(l: L) =
+    new LkDiHyperEdge[N](sources, targets) {
+      override val label = l
       type L1 = L
-      override val label = pLabel
-      override protected[collection]
-      def copy[NN](newNodes: Product) = newEdge[NN,L](newNodes, pLabel)
     }
 }
 // ------------------------------------------------------------------------ WL*

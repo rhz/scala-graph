@@ -200,13 +200,13 @@ trait AdjacencyListBase[N,
         for (thatEdge <- thatNode.edges if thatEdge.edge._1 == thisNode &&
                                            include(thatEdge)) {
           val e = thatEdge.edge
-          val thisEdge = newEdge(e.copy[NodeT]((e.arity: @scala.annotation.switch) match {
-            case 2 => Tuple2(thisNode, get(e._2))
-            case 3 => Tuple3(thisNode, get(e._2), get(e._n(2)))
-            case 4 => Tuple4(thisNode, get(e._2), get(e._n(2)), get(e._n(3)))
-            case 5 => Tuple5(thisNode, get(e._2), get(e._n(2)), get(e._n(3)), get(e._n(4)))
-            case _ => e.map(n => get(n)).toList 
-          }).asInstanceOf[E[NodeT]])
+          val thisEdge = newEdge(e.copy[NodeT](e.nodes.map(n => get(n)))) // (e.arity: @scala.annotation.switch) match {
+          //   case 2 => Tuple2(thisNode, get(e._2))
+          //   case 3 => Tuple3(thisNode, get(e._2), get(e._n(2)))
+          //   case 4 => Tuple4(thisNode, get(e._2), get(e._n(2)), get(e._n(3)))
+          //   case 5 => Tuple5(thisNode, get(e._2), get(e._n(2)), get(e._n(3)), get(e._n(4)))
+          //   case _ => e.nodes.map(n => get(n)).toList
+          // }).asInstanceOf[E[NodeT]])
 
           thisNode.edges +=! thisEdge
           newEdges(cnt) = thisEdge; cnt += 1

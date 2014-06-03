@@ -97,30 +97,43 @@ object LBase {
   {
     /** @param nodes must be of `arity >= 2` for hyperedges and of `arity == 2` for edges. */
     @inline final protected[collection]
-    def from [N,L]  (nodes: Product)(label: L) = newEdge[N,L](nodes, label)
-    @inline final def unapply[N]  (e: E[N]): Option[(N,N,E[N]#L1)] =
-      if (e eq null) None else Some((e._1, e._2, e.label))
+    def from[N,L](nodes: Iterable[N])(label: L) = newEdge[N,L](nodes, label)
 
-    def newEdge[N,L](nodes: Product, label_1: L): E[N] with EdgeCopy[E]{type L1 = L}
+    @inline final def apply[N,L](nodes: Iterable[N])(label: L) =
+      newEdge[N,L](nodes, label)
+
+    def newEdge[N,L](nodes: Iterable[N], label: L): E[N] with EdgeCopy[E] { type L1 = L }
   }
   /** Everything common to labeled hyperedge companion objects. */
   trait LHyperEdgeCompanion[E[X] <: EdgeLikeIn[X] with LHyperEdgeBound[_,E]] 
     extends LEdgeCompanionBase[E] 
   {
-    final def apply[N,L](node_1: N, node_2: N, nodes: N*)
-                        (label: L) = newEdge[N,L](NodeProduct(node_1, node_2, nodes: _*), label)
-    final def apply[N,L](nodes: Iterable[N])
-                        (label: L) = newEdge[N,L](NodeProduct(nodes), label)
+    // final def apply[N,L](node_1: N, node_2: N, nodes: N*)
+    //                     (label: L) = newEdge[N,L](Iterable(node_1, node_2, nodes: _*), label)
+    // final def apply[N,L](nodes: Iterable[N])
+    //                     (label: L) = newEdge[N,L](nodes, label)
   }
   type  LEdgeBound[N, +E[X<:N] <: EdgeLikeIn[X]] = LHyperEdgeBound[N,E] with UnDiEdge[N] 
   /** Everything common to predefined edge labeled edge companion objects. */
   trait LEdgeCompanion[E[X] <: EdgeLikeIn[X] with LEdgeBound[_,E]]
     extends LEdgeCompanionBase[E] 
   {
-    final def apply[N,L](node_1: N, node_2: N)
-                        (label: L) = newEdge[N,L](NodeProduct(node_1, node_2), label)
-    final def apply[N,L](nodes: Product)
-                        (label: L) = newEdge[N,L](nodes, label)
+    def apply[N,L](n1: N, n2: N)(l: L): E[N] with EdgeCopy[E] { type L1 = L }
+
+    final def newEdge[N,L](nodes: Iterable[N], label: L)
+        : E[N] with EdgeCopy[E] { type L1 = L } = {
+      require(nodes.size == 2, "too many nodes")
+      val ns = nodes.iterator
+      apply(ns.next, ns.next)(label)
+    }
+
+    // @inline final def unapply[N](e: E[N]): Option[(N, N, e.L1)] =
+    //   if (e eq null) None else Some((e._1, e._2, e.label))
+
+    // final def apply[N,L](node_1: N, node_2: N)
+    //                     (label: L) = newEdge[N,L](node_1, node_2, label)
+    // final def apply[N,L](nodes: Iterable[N])
+    //                     (label: L) = newEdge[N,L](nodes, label)
   }
   /** Implicit conversions from an outer labeled edge to its label.
    * 
@@ -239,10 +252,10 @@ object LkBase {
     this: EdgeLike[N] with Eq =>
     override protected def equals(other: EdgeLike[_]) = other match {
       case that: LkEdge[_] => this.label == that.label &&
-                              baseEquals(that)  
+                              baseEquals(that)
       case _ => false
     }
-    override def hashCode = baseHashCode ^ label.##  
+    override def hashCode = baseHashCode ^ label.##
   }
   type  LkHyperEdgeBound[N, +E[X<:N] <: EdgeLikeIn[X]] = LHyperEdgeBound[N,E] with LkEdge[N] 
   /** Everything common to key-weighted hyperedge companion objects. */
@@ -366,28 +379,40 @@ object CBase {
     extends EdgeCompanionBase[E]
   {
     protected[collection] type P <: Product
-    @inline final def from [N](nodes: Product, attr: P): E[N] = newEdge[N](nodes, attr)
+    @inline final def from [N](nodes: Iterable[N], attr: P): E[N] with EdgeCopy[E] = newEdge[N](nodes, attr)
+    @inline final def apply[N](nodes: Iterable[N], attr: P): E[N] with EdgeCopy[E] = newEdge[N](nodes, attr)
     /** Must return an instance of the custom edge which is achieved by projecting the elements
      *  of `attr` and passing them as single arguments to the custom edge constructor. */
-    protected def newEdge[N](nodes: Product, attr: P): E[N] with EdgeCopy[E]
+    protected def newEdge[N](nodes: Iterable[N], attr: P): E[N] with EdgeCopy[E]
   }
   /** To be mixed in by custom hyperedge companion objects. */
   trait CHyperEdgeCompanion[E[X] <: EdgeLikeIn[X] with CHyperEdgeBound[_,E]]
     extends CEdgeCompanionBase[E]
   {
-    @inline final def apply[N](node_1: N, node_2: N, nodes: N*)(attr: P): E[N] =
-      newEdge[N](NodeProduct(node_1, node_2, nodes: _*), attr)
-    @inline final def apply[N](nodes: Iterable[N], attr: P): E[N] =
-      newEdge[N](NodeProduct(nodes), attr)
+    // @inline final def apply[N](node_1: N, node_2: N, nodes: N*)(attr: P): E[N] =
+    //   newEdge[N](NodeProduct(node_1, node_2, nodes: _*), attr)
+    // @inline final def apply[N](nodes: Iterable[N], attr: P): E[N] =
+    //   newEdge[N](NodeProduct(nodes), attr)
   }
   type  CEdgeBound[N, +E[X<:N] <: EdgeLikeIn[X]] = CHyperEdgeBound[N,E] with UnDiEdge[N] 
   /** To be mixed in by custom edge companion objects. */
   trait CEdgeCompanion[E[X] <: EdgeLikeIn[X] with CEdgeBound[_,E]]
-    extends CEdgeCompanionBase[E] 
+    extends CEdgeCompanionBase[E]
   {
-    @inline final def apply[N](node_1: N, node_2: N, attr: P): E[N] =
-      newEdge[N](NodeProduct(node_1, node_2), attr)
-    @inline final def apply[N,A <: Product](nodes: Tuple2[N,N], attr: P) =
-      newEdge[N](nodes, attr)
+    def apply[N](n1: N, n2: N)(attrib: P): E[N] with EdgeCopy[E]
+
+    @inline final def from[N](n1: N, n2: N)(attr: P): E[N] with EdgeCopy[E] = apply(n1, n2)(attr)
+
+    final def newEdge[N](nodes: Iterable[N], attr: P)
+        : E[N] with EdgeCopy[E] = {
+      require(nodes.size == 2, "too many nodes")
+      val ns = nodes.iterator
+      apply(ns.next, ns.next)(attr)
+    }
+
+    // @inline final def apply[N](node_1: N, node_2: N, attr: P): E[N] =
+    //   newEdge[N](NodeProduct(node_1, node_2), attr)
+    // @inline final def apply[N,A <: Product](nodes: Tuple2[N,N], attr: P) =
+    //   newEdge[N](nodes, attr)
   }
 }

@@ -70,71 +70,70 @@ object WkDiEdge extends WkEdgeCompanion[WkDiEdge] {
 }
 // ------------------------------------------------------------------------- L*
 /** labeled undirected edge. */
-abstract class LUnDiEdge[N](nodes: Product)
-  extends UnDiEdge[N](nodes)
-  with    OuterEdge  [N,LUnDiEdge]
-  with    LEdge   [N]
+abstract class LUnDiEdge[N](n1: N, n2: N)
+  extends UnDiEdge[N](n1, n2)
+  with    OuterEdge[N,LUnDiEdge]
+  with    LEdge[N]
+  with    EdgeCopy[LUnDiEdge] {
+  override protected[collection] def copy[NN](newNodes: Iterable[NN]) =
+    LUnDiEdge.newEdge[NN,L1](newNodes, label)
+}
 object LUnDiEdge extends LEdgeCompanion[LUnDiEdge] {
-  @SerialVersionUID(977L) override
-  def newEdge[N,L](nodes: Product, pLabel: L) =
-    new  LUnDiEdge[N](nodes)
-    with EdgeCopy [LUnDiEdge] { 
+  override def apply[N,L](n1: N, n2: N)(l: L) =
+    new LUnDiEdge[N](n1, n2) {
       type L1 = L
-      override val label = pLabel
-      override protected[collection]
-      def copy[NN](newNodes: Product) = newEdge[NN,L](newNodes, pLabel)
+      override val label = l
     }
 }
 /** labeled directed edge. */
-abstract class LDiEdge[N](nodes: Product)
-  extends LUnDiEdge [N](nodes) 
+abstract class LDiEdge[N](override val source: N, override val target: N)
+  extends LUnDiEdge[N](source, target)
   with    DiEdgeLike[N]
-  with    OuterEdge    [N,LDiEdge]
+  with    OuterEdge[N,LDiEdge]
+  with    EdgeCopy[LDiEdge] {
+  override protected[collection] def copy[NN](newNodes: Iterable[NN]) =
+    LDiEdge.newEdge[NN,L1](newNodes, label)
+}
 object LDiEdge extends LEdgeCompanion[LDiEdge] {
-  @SerialVersionUID(978L) override
-  def newEdge[N,L](nodes: Product, pLabel: L) =
-    new  LDiEdge [N](nodes)
-    with EdgeCopy[LDiEdge] { 
+  override def apply[N,L](source: N, target: N)(l: L) =
+    new LDiEdge[N](source, target) {
       type L1 = L
-      override val label = pLabel
-      override protected[collection]
-      def copy[NN](newNodes: Product) = newEdge[NN,L](newNodes, pLabel)
+      override val label = l
     }
 }
 // ------------------------------------------------------------------------ Lk*
 import LkBase._
 /** key-labeled undirected edge. */
-abstract class LkUnDiEdge[N](nodes: Product)
-  extends LUnDiEdge[N](nodes) 
-  with    OuterEdge   [N,LkUnDiEdge]
-  with    LkEdge   [N]
+abstract class LkUnDiEdge[N](n1: N, n2: N)
+  extends LUnDiEdge[N](n1, n2)
+  with    OuterEdge[N,LkUnDiEdge]
+  with    LkEdge[N]
   with    EqUnDi
+  with    EdgeCopy[LkUnDiEdge] {
+  override protected[collection] def copy[NN](newNodes: Iterable[NN]) =
+    LkUnDiEdge.newEdge[NN,L1](newNodes, label)
+}
 object LkUnDiEdge extends LkEdgeCompanion[LkUnDiEdge] {
-  @SerialVersionUID(979L) override
-  def newEdge[N,L](nodes: Product, pLabel: L) =
-    new  LkUnDiEdge[N](nodes)
-    with EdgeCopy  [LkUnDiEdge] { 
+  override def apply[N,L](n1: N, n2: N)(l: L) =
+    new LkUnDiEdge[N](n1, n2) {
       type L1 = L
-      override val label = pLabel
-      override protected[collection]
-      def copy[NN](newNodes: Product) = newEdge[NN,L](newNodes, pLabel)
+      override val label = l
     }
 }
 /** key-labeled directed edge. */
-abstract class LkDiEdge[N](nodes: Product)
-  extends LDiEdge[N](nodes) 
-  with    OuterEdge [N,LkDiEdge]
-  with    LkEdge [N]
+abstract class LkDiEdge[N](source: N, target: N)
+  extends LDiEdge[N](source, target)
+  with    OuterEdge[N,LkDiEdge]
+  with    LkEdge[N]
   with    EqDi
+  with    EdgeCopy[LkDiEdge] {
+  override protected[collection] def copy[NN](newNodes: Iterable[NN]) =
+    LkDiEdge.newEdge[NN,L1](newNodes, label)
 object LkDiEdge extends LkEdgeCompanion[LkDiEdge] {
-  @SerialVersionUID(980L) override
-  def newEdge[N,L](nodes: Product, pLabel: L) =
-    new  LkDiEdge[N](nodes)
-    with EdgeCopy[LkDiEdge] { 
+  override def apply[N,L](source: N, target: N)(l: L) =
+    new LkDiEdge[N](source, target) {
       type L1 = L
-      override val label = pLabel
-      override protected[collection]
-      def copy[NN](newNodes: Product) = newEdge[NN,L](newNodes, pLabel)
+      override val label = l
     }
 }
 // ------------------------------------------------------------------------ WL*
@@ -189,7 +188,6 @@ object WkLUnDiEdge extends WkLEdgeCompanion[WkLUnDiEdge] {
       override val label = pLabel
       override protected[collection]
       def copy[NN](newNodes: Product) = newEdge[NN,L](newNodes, weight, pLabel)
-    }
 }
 /** key-weighted, labeled directed edge. */
 abstract class WkLDiEdge[N](nodes: Product, weight: Long)
