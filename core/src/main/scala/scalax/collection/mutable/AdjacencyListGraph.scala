@@ -55,9 +55,9 @@ trait AdjacencyListGraph[N,
           def onLooping: Unit = edges.find((e: EdgeT) => e.isLooping).fold(
             ifEmpty = aHook = None)((e: EdgeT) => aHook = Some(this -> e))
             
-          def onNonLooping: Unit = edge withTargets (t =>
+          def onNonLooping: Unit = for (t <- edge.targets)
             edges.find((e: EdgeT) => e.hasTarget((n: NodeT) => n eq t)).fold(
-              ifEmpty = diSucc remove t)((e: EdgeT) => diSucc put (t, e)))
+              ifEmpty = diSucc remove t)((e: EdgeT) => diSucc put (t, e))
           
           if (edge.isHyperEdge)
             if (edge.isLooping) {

@@ -167,19 +167,25 @@ object GraphEdge {
     def isAt(pred: N => Boolean): Boolean
     
     /** `true` if `node` is a source of this edge. $ISAT. */
-    def hasSource[M>:N](node: M): Boolean
+    def hasSource[M>:N](node: M) = sources exists (_ == node)
     /** `true` if any source end of this edge fulfills `pred`. */
-    def hasSource(pred: N => Boolean): Boolean
+    def hasSource(pred: N => Boolean) = sources exists pred
 
     /** `true` if `node` is a target of this edge. $ISAT. */
-    def hasTarget[M>:N](node: M): Boolean
+    def hasTarget[M>:N](node: M) = targets exists (_ == node)
     /** `true` if any target end of this edge fulfills `pred`. */
-    def hasTarget(pred: N => Boolean): Boolean
-    
-    /** Applies `f` to the source end resp. to all source ends of this edge. */
-    def withSources(f: N => Unit): Unit
-    /** Applies `f` to the target end resp. to all target ends of this edge. */
-    def withTargets(f: N => Unit): Unit
+    def hasTarget(pred: N => Boolean) = targets exists pred
+
+    // /** Applies `f` to the source end resp. to all source ends of this edge. */
+    // def withSources(f: N => Unit): Unit
+    // /** Applies `f` to the target end resp. to all target ends of this edge. */
+    // def withTargets(f: N => Unit): Unit
+
+    /** The source nodes of this edge or hyperedge. */
+    def sources: Iterable[N]
+
+    /** The target nodes of this edge or hyperedge. */
+    def targets: Iterable[N]
 
     /** `true` if<br />
      *  a) both `n1` and `n2` are at this edge for an undirected edge<br />
@@ -289,7 +295,7 @@ object GraphEdge {
   protected[collection] sealed trait Eq {
     protected def baseEquals(other: EdgeLike[_]): Boolean
     protected def baseHashCode: Int
-    final protected def nrEqualingNodes(itA: Iterator[_], itB: Iterable[_]): Int = {
+    final protected def nrEqualNodes(itA: Iterable[_], itB: Iterable[_]): Int = {
       var nr = 0
       for (a <- itA; b <- itB)
         if (a == b) nr += 1
@@ -299,11 +305,9 @@ object GraphEdge {
   protected[collection] trait EqHyper extends Eq {
     this: EdgeLike[_] =>
 
-    override protected def baseEquals(other: EdgeLike[_]) = {
-      val thisArity = this.arity
-      thisArity == other.arity &&
-      thisArity == nrEqualingNodes(this.iterator, other)
-    }
+    override protected def baseEquals(other: EdgeLike[_]) =
+      this.arity == other.arity &&
+      this.arity == nrEqualNodes(this.nodes, other.nodes)
 
     override protected def baseHashCode: Int = (0 /: nodes)(_ ^ _.hashCode)
   }
@@ -314,13 +318,12 @@ object GraphEdge {
       case 2 => other.arity == 2 &&
                 this._1 == other._1 &&
                 this._2 == other._2
-      case a => other.arity == a && 
-               (other match {
-                  case diHyper: DiHyperEdge[_] =>
-                    this.source == diHyper.source &&
-                    nrEqualingNodes(this.targets, Set() ++ diHyper.targets) == a - 1
-                  case _ => throw new IllegalArgumentException("Unexpected edge type.")
-                })
+      case a => other.arity == a && (other match {
+        case that: DiHyperEdge[_] =>
+          nrEqualNodes(this.sources, that.sources) == this.sources.size &&
+          nrEqualNodes(this.targets, that.targets) == this.targets.size
+        case _ => throw new IllegalArgumentException("Unexpected edge type.")
+      })
     }
     
     override protected def baseHashCode = {
@@ -366,40 +369,34 @@ object GraphEdge {
   {
     @inline final override def directed = true
 
-    /** Synonym for `source`. */
-    @inline final def from = source
-    /** The single source node of this directed edge. */
-    @inline final def source = _1
-    
-    /** Synonym for `target`. */
-    def to = target
-    /** The target node for a directed edge;
-     *  one of the target nodes for a directed hyperedge. */
-    @inline final def target = _2
-
-    /** The target nodes of this directed edgeor hyperedge. */
-    @inline final def targets = iterator drop 1
-
-    override def hasSource[M>:N](node: M) = this._1 == node
-    override def hasSource(pred: N => Boolean) = pred(this._1)
-
-    override def hasTarget[M>:N](node: M) = targets contains node
-    override def hasTarget(pred: N => Boolean) = targets exists pred
-
-    override def withSources(f: N => Unit) = f(this._1)
-    override def withTargets(f: N => Unit) = targets foreach f
+    // override def withSources(f: N => Unit) = f(this._1)
+    // override def withTargets(f: N => Unit) = targets foreach f
 
     override def matches[M >: N](n1: M, n2: M): Boolean =
-      source == n1 && (targets exists (_ == n2))
+      (sources exists (_ == n1)) && (targets exists (_ == n2))
     override def matches(p1: N => Boolean, p2: N => Boolean): Boolean =
-      p1(source) && (targets exists p2)
+      (sources exists p1) && (targets exists p2)
 
     override protected def nodesToStringSeparator = DiEdgeLike.nodeSeparator
   }
   trait DiEdgeLike[+N]
       extends DiHyperEdgeLike[N]
       with    EqDi {
-    @inline final override def to = _2
+
+    /** Synonym for `source`. */
+    @inline final def from = source
+    // /** The single source node of this directed edge. */
+    def source: N
+    // @inline final def source = _1
+
+    /** Synonym for `target`. */
+    @inline final def to = target
+    // /** The single target node of this directed edge. */
+    def target: N
+    // @inline final def target = _2
+
+    @inline final override def sources = Iterable(source)
+    @inline final override def targets = Iterable(target)
 
     final override def hasSource[M>:N](node: M) = this._1 == node
     final override def hasSource(pred: N => Boolean) = pred(this._1)
@@ -407,8 +404,8 @@ object GraphEdge {
     final override def hasTarget[M>:N](node: M) = this._2 == node
     final override def hasTarget(pred: N => Boolean) = pred(this._2)
 
-    final override def withSources(f: N => Unit) = f(this._1)
-    final override def withTargets(f: N => Unit) = f(this._2)
+    // final override def withSources(f: N => Unit) = f(this._1)
+    // final override def withTargets(f: N => Unit) = f(this._2)
     
     override def matches[M >: N](n1: M, n2: M): Boolean = diBaseEquals(n1, n2)
     override def matches(p1: N => Boolean, p2: N => Boolean): Boolean =
@@ -483,6 +480,11 @@ object GraphEdge {
     /** @param nodes must be of arity >= 2 */
     protected[collection] def from[N](nodes: Iterable[N]): E[N]
   }
+  trait DiHyperEdgeCompanion[+E[N] <: EdgeLike[N]] extends EdgeCompanionBase[E] {
+    def apply[N](s1: N, sources: N*)(t1: N, targets: N*): E[N] with EdgeCopy[E]
+    /** @param nodes must be of arity >= 2 */
+    protected[collection] def from[N](sources: Iterable[N], targets: Iterable[N]): E[N] with EdgeCopy[E]
+  }
   /**
    * The abstract methods of this trait must be implemented by companion objects
    * of simple (non-weighted, non-labeled) edges.
@@ -531,10 +533,12 @@ object GraphEdge {
     override def hasTarget[M>:N](node: M) = isAt(node)
     override def hasTarget(pred: N => Boolean) = isAt(pred)
 
-    override def withSources(f: N => Unit) = iterator foreach f
-    override def withTargets(f: N => Unit) = withSources(f)
+    override def sources = nodes
+    override def targets = nodes
+    // override def withSources(f: N => Unit) = iterator foreach f
+    // override def withTargets(f: N => Unit) = withSources(f)
 
-    final protected def matches(fList: Seq[N => Boolean]): Boolean = {
+    final protected def matches(fs: Seq[N => Boolean]): Boolean = {
       val it = nodes.toIterator
       @tailrec def loop(checks: Seq[N => Boolean]): Boolean = {
         if (checks.isEmpty) true 
@@ -546,7 +550,7 @@ object GraphEdge {
           else             loop(checks)
         }
       }
-      loop(fList)
+      loop(fs)
     }
     override def matches[M >: N](n1: M, n2: M): Boolean =
       matches(List((n: M) => n == n1,
@@ -643,8 +647,8 @@ object GraphEdge {
    * @author Peter Empen
    */
   @SerialVersionUID(51L)
-  class DiHyperEdge[N] (val sources: Iterable[N],
-                        val targets: Iterable[N])
+  class DiHyperEdge[N] (override val sources: Iterable[N],
+                        override val targets: Iterable[N])
     extends HyperEdge[N](sources ++ targets)
     with    DiHyperEdgeLike[N]
     with    EdgeCopy[DiHyperEdge]
@@ -743,12 +747,14 @@ object GraphEdge {
     }
 
     @inline final override def arity = 2
-    
+
     override def isAt[M>:N](node: M) = _1 == node || _2 == node
     override def isAt(pred: N => Boolean) = pred(_1) || pred(_2)
 
-    override def withSources(f: N => Unit) = { f(this._1); f(this._2) }
-    override def withTargets(f: N => Unit) = withSources(f)
+    override def sources = nodes
+    override def targets = nodes
+    // override def withSources(f: N => Unit) = { f(this._1); f(this._2) }
+    // override def withTargets(f: N => Unit) = withSources(f)
 
     override def matches[M >: N](n1: M, n2: M): Boolean = unDiBaseEquals(n1, n2)
     override def matches(p1: N => Boolean, p2: N => Boolean): Boolean =
@@ -781,7 +787,7 @@ object GraphEdge {
    * @author Peter Empen
    */
   @SerialVersionUID(53L)
-  class DiEdge[N] (source: N, target: N)
+  class DiEdge[N] (override val source: N, override val target: N)
     extends UnDiEdge[N](source, target)
     with    DiEdgeLike[N]
     with    EdgeCopy[DiEdge]

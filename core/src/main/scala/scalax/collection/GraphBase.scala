@@ -453,15 +453,15 @@ trait GraphBase[N, E[X] <: EdgeLikeIn[X]]
     }
     /** Synonym for `adjacents`. */
     @inline final def ~~ = adjacents
-    /**
-     * The head (target node) of a directed edge or `_2` otherwise.
-     */
-     /* With 2.10, 'edge.to' can no more be called implicitly because of the addition of
-     * 'to' to GenTraversableOnce in the standard library. So we must delegate the call. */
-    def to: NodeT = edge match {
-      case di: DiHyperEdgeLike[NodeT] => di.to
-      case unDi @ _                   => unDi.edge._2
-    }
+    // /**
+    //  * The head (target node) of a directed edge or `_2` otherwise.
+    //  */
+    //  /* With 2.10, 'edge.to' can no more be called implicitly because of the addition of
+    //  * 'to' to GenTraversableOnce in the standard library. So we must delegate the call. */
+    // def to: NodeT = edge match {
+    //   case di: DiHyperEdgeLike[NodeT] => di.to
+    //   case unDi @ _                   => unDi.edge._2
+    // }
 
     override def canEqual(that: Any) = that.isInstanceOf[GraphBase[N,E]#InnerEdge] ||
                                        that.isInstanceOf[EdgeLike[_]]
